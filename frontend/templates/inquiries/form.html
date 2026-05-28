@@ -48,19 +48,6 @@
           </div>
         </div>
         <div class="form-group">
-          <label>City</label>
-          <div class="input-wrap"><i class="fa-solid fa-city"></i>
-            <div class="combo" data-combo="city">
-              <input type="text" id="city_input" name="city" class="combo-input" placeholder="City" autocomplete="off"
-                     value="{{ values.get('city', inquiry.city if inquiry else '') }}"/>
-              <button type="button" class="combo-toggle" aria-label="Toggle city list">
-                <i class="fa-solid fa-chevron-down"></i>
-              </button>
-              <div class="combo-list" id="city_list"></div>
-            </div>
-          </div>
-        </div>
-        <div class="form-group">
           <label>State</label>
           <div class="input-wrap"><i class="fa-solid fa-map"></i>
             <div class="combo" data-combo="state">
@@ -77,6 +64,19 @@
           <label>Pincode</label>
           <div class="input-wrap"><i class="fa-solid fa-hashtag"></i>
             <input type="text" name="pincode" placeholder="PIN code" value="{{ values.get('pincode', inquiry.pincode if inquiry else '') }}"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>City</label>
+          <div class="input-wrap"><i class="fa-solid fa-city"></i>
+            <div class="combo" data-combo="city">
+              <input type="text" id="city_input" name="city" class="combo-input" placeholder="City" autocomplete="off"
+                     value="{{ values.get('city', inquiry.city if inquiry else '') }}"/>
+              <button type="button" class="combo-toggle" aria-label="Toggle city list">
+                <i class="fa-solid fa-chevron-down"></i>
+              </button>
+              <div class="combo-list" id="city_list"></div>
+            </div>
           </div>
         </div>
       </div>

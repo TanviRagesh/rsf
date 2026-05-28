@@ -365,6 +365,7 @@ img{max-width:100%}
 .req{color:var(--red)}
 .form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.form-row-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px}
 .form-actions{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap}
 .form-textarea{
   width:100%;padding:10px 12px;
@@ -537,6 +538,7 @@ code{background:rgba(0,0,0,.08);padding:1px 5px;border-radius:4px;font-size:.8re
 @media(max-width:1024px){
   .chart-row{grid-template-columns:1fr}
   .form-row-3{grid-template-columns:1fr 1fr}
+  .form-row-4{grid-template-columns:1fr 1fr}
 }
 @media(max-width:900px){
   .two-col-layout{grid-template-columns:1fr}
@@ -550,7 +552,7 @@ code{background:rgba(0,0,0,.08);padding:1px 5px;border-radius:4px;font-size:.8re
   .mobile-toggle{display:block}
   .content-body{padding:14px 16px}
   .stats-grid{grid-template-columns:1fr 1fr}
-  .form-row-2,.form-row-3{grid-template-columns:1fr}
+  .form-row-2,.form-row-3,.form-row-4{grid-template-columns:1fr}
   .form-card,.form-card.wide{padding:18px 16px}
   .notif-dropdown{width:92vw;right:-40px}
   .topbar{padding:0 16px}

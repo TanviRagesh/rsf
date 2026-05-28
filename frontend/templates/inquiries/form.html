@@ -8,8 +8,8 @@
 {% set course_value = values.get('course_id', inquiry.course_id if inquiry else '') | string %}
 {% set offer_value = values.get('offer_id', inquiry.offer_id if inquiry else '') | string %}
 {% set status_value = values.get('status', inquiry.status if inquiry else 'Open') %}
-{% set ref2_visible = values.get('ref2_name') or values.get('ref2_mobile') or (inquiry and (inquiry.ref2_name or inquiry.ref2_mobile)) %}
-{% set ref3_visible = values.get('ref3_name') or values.get('ref3_mobile') or (inquiry and (inquiry.ref3_name or inquiry.ref3_mobile)) %}
+{% set emergency2_visible = values.get('emergency2_name') or values.get('emergency2_mobile') or values.get('emergency2_relation') or (inquiry and (inquiry.emergency2_name or inquiry.emergency2_mobile or inquiry.emergency2_relation)) %}
+{% set emergency3_visible = values.get('emergency3_name') or values.get('emergency3_mobile') or values.get('emergency3_relation') or (inquiry and (inquiry.emergency3_name or inquiry.emergency3_mobile or inquiry.emergency3_relation)) %}
 <div class="form-card wide">
   <form method="POST">
     {{ csrf_input() }}
@@ -65,7 +65,7 @@
           <div class="input-wrap"><i class="fa-solid fa-city"></i>
             <div class="combo" data-combo="city">
               <input type="text" id="city_input" name="city" class="combo-input" placeholder="City" autocomplete="off"
-                     value="{{ values.get('city', inquiry.city if inquiry else '') }}"/>
+                value="{{ values.get('city') or (inquiry.city if inquiry and inquiry.city else '') }}"/>
               <button type="button" class="combo-toggle" aria-label="Toggle city list">
                 <i class="fa-solid fa-chevron-down"></i>
               </button>
@@ -80,6 +80,103 @@
           </div>
           <div id="pincode_error" class="field-error" style="color:#dc2626;margin-top:6px;font-size:.9rem;display:none"></div>
         </div>
+      </div>
+    </div>
+
+    <!-- Emergency Contacts -->
+    <div class="form-section">
+      <div class="form-section-title"><i class="fa-solid fa-triangle-exclamation"></i> Emergency Contacts</div>
+
+      <div class="form-row-3" id="emergency1">
+        <div class="form-group">
+          <label>Emergency Contact 1 Name</label>
+          <div class="input-wrap"><i class="fa-solid fa-user-shield"></i>
+            <input type="text" name="emergency1_name" placeholder="Contact name" value="{{ values.get('emergency1_name', inquiry.emergency1_name if inquiry else '') }}"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Emergency Contact 1 Number</label>
+          <div class="input-wrap"><i class="fa-solid fa-phone"></i>
+            <input type="text" name="emergency1_mobile" placeholder="Mobile" value="{{ values.get('emergency1_mobile', inquiry.emergency1_mobile if inquiry else '') }}"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Relationship</label>
+          <div class="input-wrap"><i class="fa-solid fa-people-arrows"></i>
+            <select name="emergency1_relation">
+              <option value="">— Select —</option>
+              <option value="Mother" {% if values.get('emergency1_relation', inquiry.emergency1_relation if inquiry else '') == 'Mother' %}selected{% endif %}>Mother</option>
+              <option value="Father" {% if values.get('emergency1_relation', inquiry.emergency1_relation if inquiry else '') == 'Father' %}selected{% endif %}>Father</option>
+              <option value="Sibling" {% if values.get('emergency1_relation', inquiry.emergency1_relation if inquiry else '') == 'Sibling' %}selected{% endif %}>Sibling</option>
+              <option value="Other" {% if values.get('emergency1_relation', inquiry.emergency1_relation if inquiry else '') == 'Other' %}selected{% endif %}>Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="display:flex;align-items:flex-end">
+          <button type="button" class="btn btn-outline btn-sm" data-add-ref="emergency2" {% if emergency2_visible %}style="display:none"{% endif %}>
+            <i class="fa-solid fa-plus"></i> Add Emergency Contact 2
+          </button>
+        </div>
+      </div>
+
+      <div class="form-row-3" id="emergency2" style="{{ 'display:grid' if emergency2_visible else 'display:none' }}">
+        <div class="form-group">
+          <label>Emergency Contact 2 Name</label>
+          <div class="input-wrap"><i class="fa-solid fa-user-shield"></i>
+            <input type="text" name="emergency2_name" placeholder="Contact name" value="{{ values.get('emergency2_name', inquiry.emergency2_name if inquiry else '') }}"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Emergency Contact 2 Number</label>
+          <div class="input-wrap"><i class="fa-solid fa-phone"></i>
+            <input type="text" name="emergency2_mobile" placeholder="Mobile" value="{{ values.get('emergency2_mobile', inquiry.emergency2_mobile if inquiry else '') }}"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Relationship</label>
+          <div class="input-wrap"><i class="fa-solid fa-people-arrows"></i>
+            <select name="emergency2_relation">
+              <option value="">— Select —</option>
+              <option value="Mother" {% if values.get('emergency2_relation', inquiry.emergency2_relation if inquiry else '') == 'Mother' %}selected{% endif %}>Mother</option>
+              <option value="Father" {% if values.get('emergency2_relation', inquiry.emergency2_relation if inquiry else '') == 'Father' %}selected{% endif %}>Father</option>
+              <option value="Sibling" {% if values.get('emergency2_relation', inquiry.emergency2_relation if inquiry else '') == 'Sibling' %}selected{% endif %}>Sibling</option>
+              <option value="Other" {% if values.get('emergency2_relation', inquiry.emergency2_relation if inquiry else '') == 'Other' %}selected{% endif %}>Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" style="display:flex;align-items:flex-end">
+          <button type="button" class="btn btn-outline btn-sm" data-add-ref="emergency3" {% if emergency3_visible %}style="display:none"{% endif %}>
+            <i class="fa-solid fa-plus"></i> Add Emergency Contact 3
+          </button>
+        </div>
+      </div>
+
+      <div class="form-row-3" id="emergency3" style="{{ 'display:grid' if emergency3_visible else 'display:none' }}">
+        <div class="form-group">
+          <label>Emergency Contact 3 Name</label>
+          <div class="input-wrap"><i class="fa-solid fa-user-shield"></i>
+            <input type="text" name="emergency3_name" placeholder="Contact name" value="{{ values.get('emergency3_name', inquiry.emergency3_name if inquiry else '') }}"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Emergency Contact 3 Number</label>
+          <div class="input-wrap"><i class="fa-solid fa-phone"></i>
+            <input type="text" name="emergency3_mobile" placeholder="Mobile" value="{{ values.get('emergency3_mobile', inquiry.emergency3_mobile if inquiry else '') }}"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Relationship</label>
+          <div class="input-wrap"><i class="fa-solid fa-people-arrows"></i>
+            <select name="emergency3_relation">
+              <option value="">— Select —</option>
+              <option value="Mother" {% if values.get('emergency3_relation', inquiry.emergency3_relation if inquiry else '') == 'Mother' %}selected{% endif %}>Mother</option>
+              <option value="Father" {% if values.get('emergency3_relation', inquiry.emergency3_relation if inquiry else '') == 'Father' %}selected{% endif %}>Father</option>
+              <option value="Sibling" {% if values.get('emergency3_relation', inquiry.emergency3_relation if inquiry else '') == 'Sibling' %}selected{% endif %}>Sibling</option>
+              <option value="Other" {% if values.get('emergency3_relation', inquiry.emergency3_relation if inquiry else '') == 'Other' %}selected{% endif %}>Other</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group"></div>
       </div>
     </div>
 
@@ -133,7 +230,7 @@
         <div class="form-group">
           <label>Fees Paid (₹)</label>
           <div class="input-wrap"><i class="fa-solid fa-money-bill-wave"></i>
-            <input type="number" name="fees_paid" id="fees_paid" step="1000" min="0"
+                 <input type="number" name="fees_paid" id="fees_paid" step="any" min="0"
                    {% if status_value != 'Converted' %}disabled readonly{% endif %}
                    placeholder="Available after conversion"
                    value="{{ values.get('fees_paid', inquiry.fees_paid if inquiry else '') }}"/>
@@ -185,62 +282,37 @@
       </div>
 
       <!-- Ref 1 always visible -->
-      <div class="form-row-3" id="ref1">
+      <div class="form-row-4" id="ref1">
         <div class="form-group">
-          <label>Ref 1 Name</label>
+          <label>Type Of Ref</label>
+          <div class="input-wrap"><i class="fa-solid fa-layer-group"></i>
+            <select name="ref1_type">
+              <option value="">— Select —</option>
+              <option value="Channel Partner" {% if values.get('ref1_type', inquiry.ref1_type if inquiry else '') == 'Channel Partner' %}selected{% endif %}>Channel Partner</option>
+              <option value="Student" {% if values.get('ref1_type', inquiry.ref1_type if inquiry else '') == 'Student' %}selected{% endif %}>Student</option>
+              <option value="Outsider" {% if values.get('ref1_type', inquiry.ref1_type if inquiry else '') == 'Outsider' %}selected{% endif %}>Outsider</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Ref Name</label>
           <div class="input-wrap"><i class="fa-solid fa-user-tag"></i>
             <input type="text" name="ref1_name" placeholder="Reference name" value="{{ values.get('ref1_name', inquiry.ref1_name if inquiry else '') }}"/>
           </div>
         </div>
         <div class="form-group">
-          <label>Ref 1 Mobile</label>
+          <label>Ref Mobile</label>
           <div class="input-wrap"><i class="fa-solid fa-phone"></i>
             <input type="text" name="ref1_mobile" placeholder="Mobile" value="{{ values.get('ref1_mobile', inquiry.ref1_mobile if inquiry else '') }}"/>
           </div>
         </div>
-        <div class="form-group" style="display:flex;align-items:flex-end">
-          <button type="button" class="btn btn-outline btn-sm" data-add-ref="ref2" {% if ref2_visible %}style="display:none"{% endif %}>
-            <i class="fa-solid fa-plus"></i> Add Ref 2
-          </button>
-        </div>
-      </div>
-
-      <!-- Ref 2 optional -->
-      <div class="form-row-3" id="ref2" style="{{ 'display:grid' if ref2_visible else 'display:none' }}">
         <div class="form-group">
-          <label>Ref 2 Name</label>
-          <div class="input-wrap"><i class="fa-solid fa-user-tag"></i>
-            <input type="text" name="ref2_name" placeholder="Reference name" value="{{ values.get('ref2_name', inquiry.ref2_name if inquiry else '') }}"/>
+          <label>Amount Paid</label>
+          <div class="input-wrap"><i class="fa-solid fa-indian-rupee-sign"></i>
+            <input type="number" name="ref1_amount_paid" placeholder="Amount paid" min="0" step="any"
+                   value="{{ values.get('ref1_amount_paid', inquiry.ref1_amount_paid if inquiry else '') }}"/>
           </div>
         </div>
-        <div class="form-group">
-          <label>Ref 2 Mobile</label>
-          <div class="input-wrap"><i class="fa-solid fa-phone"></i>
-            <input type="text" name="ref2_mobile" placeholder="Mobile" value="{{ values.get('ref2_mobile', inquiry.ref2_mobile if inquiry else '') }}"/>
-          </div>
-        </div>
-        <div class="form-group" style="display:flex;align-items:flex-end">
-          <button type="button" class="btn btn-outline btn-sm" data-add-ref="ref3" {% if ref3_visible %}style="display:none"{% endif %}>
-            <i class="fa-solid fa-plus"></i> Add Ref 3
-          </button>
-        </div>
-      </div>
-
-      <!-- Ref 3 optional -->
-      <div class="form-row-3" id="ref3" style="{{ 'display:grid' if ref3_visible else 'display:none' }}">
-        <div class="form-group">
-          <label>Ref 3 Name</label>
-          <div class="input-wrap"><i class="fa-solid fa-user-tag"></i>
-            <input type="text" name="ref3_name" placeholder="Reference name" value="{{ values.get('ref3_name', inquiry.ref3_name if inquiry else '') }}"/>
-          </div>
-        </div>
-        <div class="form-group">
-          <label>Ref 3 Mobile</label>
-          <div class="input-wrap"><i class="fa-solid fa-phone"></i>
-            <input type="text" name="ref3_mobile" placeholder="Mobile" value="{{ values.get('ref3_mobile', inquiry.ref3_mobile if inquiry else '') }}"/>
-          </div>
-        </div>
-        <div class="form-group"></div>
       </div>
     </div>
 

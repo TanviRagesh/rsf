@@ -227,9 +227,25 @@ def validate_inquiry_form(form, fees_total):
     ref1_name = clean_optional_text(form.get("ref1_name"), "Reference 1 name", max_length=100)
     ref2_name = clean_optional_text(form.get("ref2_name"), "Reference 2 name", max_length=100)
     ref3_name = clean_optional_text(form.get("ref3_name"), "Reference 3 name", max_length=100)
+    ref1_type = clean_choice(form.get("ref1_type"), "Reference 1 type", {"Channel Partner", "Student", "Outsider"}, required=False)
+    ref2_type = clean_choice(form.get("ref2_type"), "Reference 2 type", {"Channel Partner", "Student", "Outsider"}, required=False)
+    ref3_type = clean_choice(form.get("ref3_type"), "Reference 3 type", {"Channel Partner", "Student", "Outsider"}, required=False)
     ref1_mobile = normalize_optional_mobile(form.get("ref1_mobile"), "Reference 1 mobile")
     ref2_mobile = normalize_optional_mobile(form.get("ref2_mobile"), "Reference 2 mobile")
     ref3_mobile = normalize_optional_mobile(form.get("ref3_mobile"), "Reference 3 mobile")
+    ref1_amount_paid = parse_amount(form.get("ref1_amount_paid", "0"), "Reference 1 amount paid")
+    ref2_amount_paid = parse_amount(form.get("ref2_amount_paid", "0"), "Reference 2 amount paid")
+    ref3_amount_paid = parse_amount(form.get("ref3_amount_paid", "0"), "Reference 3 amount paid")
+    emergency1_name = clean_optional_text(form.get("emergency1_name"), "Emergency contact 1 name", max_length=100)
+    emergency2_name = clean_optional_text(form.get("emergency2_name"), "Emergency contact 2 name", max_length=100)
+    emergency3_name = clean_optional_text(form.get("emergency3_name"), "Emergency contact 3 name", max_length=100)
+    emergency1_mobile = normalize_optional_mobile(form.get("emergency1_mobile"), "Emergency contact 1 number")
+    emergency2_mobile = normalize_optional_mobile(form.get("emergency2_mobile"), "Emergency contact 2 number")
+    emergency3_mobile = normalize_optional_mobile(form.get("emergency3_mobile"), "Emergency contact 3 number")
+    emergency_relations = {"Mother", "Father", "Sibling", "Other"}
+    emergency1_relation = clean_choice(form.get("emergency1_relation"), "Emergency contact 1 relationship", emergency_relations, required=False)
+    emergency2_relation = clean_choice(form.get("emergency2_relation"), "Emergency contact 2 relationship", emergency_relations, required=False)
+    emergency3_relation = clean_choice(form.get("emergency3_relation"), "Emergency contact 3 relationship", emergency_relations, required=False)
 
     if followup_date and followup_date < inquiry_date:
         raise ValueError("Follow-up date cannot be earlier than inquiry date.")
@@ -252,11 +268,26 @@ def validate_inquiry_form(form, fees_total):
         "admission_date": admission_date.isoformat() if admission_date else None,
         "fees_paid": fees_paid,
         "ref1_name": ref1_name,
+        "ref1_type": ref1_type,
         "ref1_mobile": ref1_mobile,
+        "ref1_amount_paid": ref1_amount_paid,
         "ref2_name": ref2_name,
+        "ref2_type": ref2_type,
         "ref2_mobile": ref2_mobile,
+        "ref2_amount_paid": ref2_amount_paid,
         "ref3_name": ref3_name,
+        "ref3_type": ref3_type,
         "ref3_mobile": ref3_mobile,
+        "ref3_amount_paid": ref3_amount_paid,
+        "emergency1_name": emergency1_name,
+        "emergency1_mobile": emergency1_mobile,
+        "emergency1_relation": emergency1_relation,
+        "emergency2_name": emergency2_name,
+        "emergency2_mobile": emergency2_mobile,
+        "emergency2_relation": emergency2_relation,
+        "emergency3_name": emergency3_name,
+        "emergency3_mobile": emergency3_mobile,
+        "emergency3_relation": emergency3_relation,
     }
 
 

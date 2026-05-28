@@ -340,8 +340,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   function filterItems(items, query) {
-    if (!query) return items;
-    const q = query.toLowerCase();
+    const normalizedQuery = String(query || '').trim();
+    if (!normalizedQuery || normalizedQuery.toLowerCase() === 'none') return items;
+    const q = normalizedQuery.toLowerCase();
     return items.filter((item) => item.toLowerCase().includes(q));
   }
 

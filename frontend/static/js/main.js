@@ -259,6 +259,155 @@ document.addEventListener('DOMContentLoaded', () => {
   const feesTotalEl = document.getElementById('fees_total');
   const statusSelect = document.getElementById('inquiry_status');
   const feesPaidEl = document.getElementById('fees_paid');
+  const stateInput = document.getElementById('state_input');
+  const cityInput = document.getElementById('city_input');
+  const stateList = document.getElementById('state_list');
+  const cityList = document.getElementById('city_list');
+
+  // Load state/district data from static JSON if available, else fallback to inline list
+  let indiaStateCities = {};
+  try {
+    const res = await fetch('/static/data/india-states-districts.json');
+    if (res.ok) {
+      const arr = await res.json();
+      arr.forEach((entry) => {
+        indiaStateCities[entry.state] = entry.districts;
+      });
+    }
+  } catch (e) {
+    // ignore and fall back
+  }
+  if (!Object.keys(indiaStateCities).length) {
+    indiaStateCities = {
+    "Andhra Pradesh": ["Visakhapatnam", "Vijayawada", "Guntur", "Nellore", "Kurnool", "Tirupati"],
+    "Arunachal Pradesh": ["Itanagar", "Tawang", "Pasighat", "Naharlagun", "Ziro"],
+    "Assam": ["Guwahati", "Silchar", "Dibrugarh", "Jorhat", "Nagaon", "Tezpur"],
+    "Bihar": ["Patna", "Gaya", "Bhagalpur", "Muzaffarpur", "Purnia", "Darbhanga"],
+    "Chhattisgarh": ["Raipur", "Bhilai", "Bilaspur", "Korba", "Durg", "Raigarh"],
+    "Goa": ["Panaji", "Margao", "Vasco da Gama", "Mapusa"],
+    "Gujarat": ["Ahmedabad", "Surat", "Vadodara", "Rajkot", "Bhavnagar", "Jamnagar"],
+    "Haryana": ["Gurugram", "Faridabad", "Panipat", "Ambala", "Karnal", "Hisar"],
+    "Himachal Pradesh": ["Shimla", "Mandi", "Solan", "Dharamshala", "Kullu"],
+    "Jharkhand": ["Ranchi", "Jamshedpur", "Dhanbad", "Bokaro", "Hazaribagh"],
+    "Karnataka": ["Bengaluru", "Mysuru", "Mangaluru", "Hubballi", "Belagavi", "Kalaburagi"],
+    "Kerala": ["Thiruvananthapuram", "Kochi", "Kozhikode", "Thrissur", "Kollam", "Kannur"],
+    "Madhya Pradesh": ["Bhopal", "Indore", "Jabalpur", "Gwalior", "Ujjain", "Sagar"],
+    "Maharashtra": ["Mumbai", "Pune", "Nagpur", "Nashik", "Thane", "Aurangabad"],
+    "Manipur": ["Imphal", "Thoubal", "Churachandpur"],
+    "Meghalaya": ["Shillong", "Tura", "Jowai"],
+    "Mizoram": ["Aizawl", "Lunglei", "Saiha"],
+    "Nagaland": ["Kohima", "Dimapur", "Mokokchung"],
+    "Odisha": ["Bhubaneswar", "Cuttack", "Rourkela", "Sambalpur", "Berhampur", "Puri"],
+    "Punjab": ["Ludhiana", "Amritsar", "Jalandhar", "Patiala", "Bathinda", "Mohali"],
+    "Rajasthan": ["Jaipur", "Jodhpur", "Udaipur", "Kota", "Ajmer", "Bikaner"],
+    "Sikkim": ["Gangtok", "Namchi", "Gyalshing"],
+    "Tamil Nadu": ["Chennai", "Coimbatore", "Madurai", "Tiruchirappalli", "Salem", "Tirunelveli"],
+    "Telangana": ["Hyderabad", "Warangal", "Nizamabad", "Karimnagar", "Khammam"],
+    "Tripura": ["Agartala", "Udaipur", "Dharmanagar"],
+    "Uttar Pradesh": ["Lucknow", "Kanpur", "Varanasi", "Agra", "Prayagraj", "Noida"],
+    "Uttarakhand": ["Dehradun", "Haridwar", "Haldwani", "Roorkee", "Nainital"],
+    "West Bengal": ["Kolkata", "Siliguri", "Durgapur", "Howrah", "Asansol"],
+    "Andaman and Nicobar Islands": ["Port Blair"],
+    "Chandigarh": ["Chandigarh"],
+    "Dadra and Nagar Haveli and Daman and Diu": ["Daman", "Diu", "Silvassa"],
+    "Delhi": ["New Delhi", "Delhi"],
+    "Jammu and Kashmir": ["Srinagar", "Jammu", "Anantnag"],
+    "Ladakh": ["Leh", "Kargil"],
+    "Lakshadweep": ["Kavaratti"],
+    "Puducherry": ["Puducherry", "Karaikal", "Mahe", "Yanam"]
+    };
+  }
+
+  const stateNames = Object.keys(indiaStateCities).sort();
+  let currentCityOptions = [];
+
+  function normalizeState(value) {
+    if (!value) return '';
+    const trimmed = value.trim();
+    const match = stateNames.find((name) => name.toLowerCase() === trimmed.toLowerCase());
+    return match || trimmed;
+  }
+
+  function renderComboList(listEl, items) {
+    if (!listEl) return;
+    if (!items.length) {
+      listEl.innerHTML = '<div class="combo-empty">No matches</div>';
+      return;
+    }
+    listEl.innerHTML = items.map((item) => (
+      `<div class="combo-item" data-value="${item}">${item}</div>`
+    )).join('');
+  }
+
+  function filterItems(items, query) {
+    if (!query) return items;
+    const q = query.toLowerCase();
+    return items.filter((item) => item.toLowerCase().includes(q));
+  }
+
+  function openCombo(listEl) {
+    listEl?.classList.add('open');
+  }
+
+  function closeCombo(listEl) {
+    listEl?.classList.remove('open');
+  }
+
+  function setupCombo(inputEl, listEl, itemsProvider, onPick) {
+    if (!inputEl || !listEl) return;
+    const refresh = () => {
+      const items = itemsProvider();
+      renderComboList(listEl, filterItems(items, inputEl.value));
+    };
+
+    inputEl.addEventListener('focus', () => {
+      refresh();
+      openCombo(listEl);
+    });
+    inputEl.addEventListener('input', () => {
+      refresh();
+      openCombo(listEl);
+    });
+    listEl.addEventListener('click', (event) => {
+      const item = event.target.closest('.combo-item');
+      if (!item) return;
+      inputEl.value = item.dataset.value || '';
+      closeCombo(listEl);
+      onPick?.(inputEl.value);
+    });
+    inputEl.closest('.combo')?.querySelector('.combo-toggle')?.addEventListener('click', (event) => {
+      event.preventDefault();
+      refresh();
+      listEl.classList.toggle('open');
+    });
+  }
+
+  function updateCityOptions(stateValue) {
+    const stateName = normalizeState(stateValue);
+    currentCityOptions = indiaStateCities[stateName] || [];
+  }
+
+  if (stateInput) {
+    updateCityOptions(stateInput.value);
+    setupCombo(stateInput, stateList, () => stateNames, (picked) => {
+      updateCityOptions(picked);
+      if (cityInput) {
+        renderComboList(cityList, filterItems(currentCityOptions, cityInput.value));
+      }
+    });
+    stateInput.addEventListener('change', () => updateCityOptions(stateInput.value));
+  }
+
+  if (cityInput) {
+    setupCombo(cityInput, cityList, () => currentCityOptions, null);
+  }
+
+  document.addEventListener('click', (event) => {
+    if (!event.target.closest('.combo')) {
+      closeCombo(stateList);
+      closeCombo(cityList);
+    }
+  });
 
   function updateFeesPaidState() {
     if (!statusSelect || !feesPaidEl) return;

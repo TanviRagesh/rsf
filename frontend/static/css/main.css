@@ -384,6 +384,24 @@ img{max-width:100%}
 .input-wrap input:focus,.input-wrap select:focus{border-color:var(--yellow);box-shadow:0 0 0 3px rgba(245,158,11,.12);background:var(--white)}
 .input-wrap input[type="number"]{appearance:textfield}
 .input-wrap input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none}
+.combo{position:relative;width:100%}
+.combo-input{padding-right:36px}
+.combo-toggle{
+  position:absolute;right:8px;top:50%;transform:translateY(-50%);
+  border:none;background:transparent;color:var(--muted);cursor:pointer;
+  padding:2px 4px;font-size:.7rem
+}
+.combo-list{
+  position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:50;
+  background:var(--white);border:1px solid var(--border);border-radius:10px;
+  box-shadow:var(--shadow);max-height:220px;overflow-y:auto;display:none
+}
+.combo-list.open{display:block}
+.combo-item{
+  padding:8px 10px;font-size:.82rem;cursor:pointer;color:var(--text)
+}
+.combo-item:hover{background:var(--yellow-light)}
+.combo-empty{padding:8px 10px;font-size:.78rem;color:var(--muted)}
 .inline-select{padding:5px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:.8rem;font-family:'Roboto',inherit;background:var(--white);cursor:pointer;outline:none;transition:border-color .2s}
 .inline-select:focus{border-color:var(--yellow)}
 

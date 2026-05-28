@@ -36,7 +36,7 @@ function notifSocketConnected() {
   return Boolean(notifSocket?.connected);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const sidebar = document.getElementById('sidebar');
   const overlay = document.getElementById('sidebarOverlay');
   const mobBtn = document.getElementById('mobileToggle');

@@ -402,6 +402,52 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupCombo(cityInput, cityList, () => currentCityOptions, null);
   }
 
+  // Pincode: restrict input to digits and max 6 chars, validate on submit
+  const pincodeInput = document.querySelector('input[name="pincode"]');
+  if (pincodeInput) {
+    pincodeInput.setAttribute('inputmode', 'numeric');
+    pincodeInput.setAttribute('maxlength', '6');
+    const pincodeError = document.getElementById('pincode_error');
+    let pincodeErrorTimer = null;
+    const showPincodeError = (msg) => {
+      if (!pincodeError) return;
+      pincodeError.textContent = msg;
+      pincodeError.style.display = 'block';
+      if (pincodeErrorTimer) clearTimeout(pincodeErrorTimer);
+      pincodeErrorTimer = setTimeout(() => { pincodeError.style.display = 'none'; pincodeErrorTimer = null; }, 2500);
+    };
+
+    let prevPin = pincodeInput.value || '';
+    pincodeInput.addEventListener('input', (ev) => {
+      const raw = pincodeInput.value || '';
+      const digitsOnly = raw.replace(/\D/g, '');
+      if (raw !== digitsOnly) {
+        showPincodeError('Only digits are allowed');
+      }
+      if (digitsOnly.length > 6) {
+        showPincodeError('Maximum 6 digits allowed');
+      }
+      const next = digitsOnly.slice(0, 6);
+      if (next !== raw) {
+        pincodeInput.value = next;
+      }
+      prevPin = pincodeInput.value;
+    });
+
+    const inquiryForm = document.querySelector('.form-card.wide form');
+    if (inquiryForm) {
+      inquiryForm.addEventListener('submit', (e) => {
+        const v = pincodeInput.value.trim();
+        if (v !== '' && !/^\d{6}$/.test(v)) {
+          e.preventDefault();
+          showPincodeError('Pincode must be exactly 6 digits');
+          pincodeInput.focus();
+          return false;
+        }
+      });
+    }
+  }
+
   document.addEventListener('click', (event) => {
     if (!event.target.closest('.combo')) {
       closeCombo(stateList);

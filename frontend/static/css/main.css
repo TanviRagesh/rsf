@@ -202,6 +202,20 @@ img{max-width:100%}
 /* ── Content body ──────────────────────────────────────────────── */
 .content-body{padding:22px 24px;flex:1}
 
+/* ── Dashboard filter ─────────────────────────────────────────── */
+.dashboard-filter{
+  display:flex;align-items:center;gap:10px;justify-content:flex-end;
+  margin-bottom:14px;flex-wrap:wrap
+}
+.dashboard-filter-label{font-size:.8rem;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:6px}
+.dashboard-filter-control{position:relative;display:inline-flex;align-items:center}
+.dashboard-filter-control select{
+  appearance:none;-webkit-appearance:none;-moz-appearance:none;
+  border:1px solid var(--border);background:var(--white);color:var(--text);
+  font-size:.78rem;padding:6px 26px 6px 10px;border-radius:999px;cursor:pointer
+}
+.dashboard-filter-control i{position:absolute;right:10px;font-size:.6rem;color:var(--muted);pointer-events:none}
+
 /* ── Flash messages ────────────────────────────────────────────── */
 .flash-container{margin-bottom:14px}
 .alert{
@@ -251,6 +265,15 @@ img{max-width:100%}
 .stat-num{font-size:1.65rem;font-weight:800;color:var(--text);line-height:1}
 .stat-label{font-size:.78rem;color:var(--muted);margin-top:3px;font-weight:500}
 .stat-sub{font-size:.72rem;color:var(--muted);margin-top:2px}
+.stat-header{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.stat-filter{position:relative;display:inline-flex;align-items:center}
+.stat-filter select{
+  appearance:none;-webkit-appearance:none;-moz-appearance:none;
+  border:1px solid var(--border);background:var(--white);color:var(--muted);
+  font-size:.68rem;padding:4px 20px 4px 8px;border-radius:999px;cursor:pointer;
+}
+.stat-filter i{position:absolute;right:8px;font-size:.55rem;color:var(--muted);pointer-events:none}
+.stat-filter.stat-filter-sm select{font-size:.62rem;padding:3px 18px 3px 7px}
 
 /* ── Buttons ───────────────────────────────────────────────────── */
 .btn{

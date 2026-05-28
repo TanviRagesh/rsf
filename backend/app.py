@@ -17,6 +17,7 @@ from .database import bootstrap_user, init_db
 from .rate_limit import rate_limiter
 from .security import build_session_fingerprint
 from .security_audit import build_security_audit_report
+from .validation import parse_optional_int
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 FRONTEND_DIR = os.path.join(BASE_DIR, "..", "frontend")
@@ -263,6 +264,35 @@ def set_security_headers(response):
     return response
 
 
+def _fetch_dashboard_metrics(cur, base, params):
+    cur.execute(f"SELECT COUNT(*) AS c {base}", params)
+    total = cur.fetchone()["c"]
+    cur.execute(f"SELECT COUNT(*) AS c {base} AND i.status='Open'", params)
+    open_c = cur.fetchone()["c"]
+    cur.execute(f"SELECT COUNT(*) AS c {base} AND i.status='Converted'", params)
+    converted = cur.fetchone()["c"]
+    cur.execute(f"SELECT COUNT(*) AS c {base} AND i.status='Closed'", params)
+    closed = cur.fetchone()["c"]
+    cur.execute(f"SELECT COUNT(*) AS c {base} AND i.followup_date=CURRENT_DATE AND i.status='Open'", params)
+    todays_fu = cur.fetchone()["c"]
+    cur.execute(f"SELECT COALESCE(SUM(fees_paid),0) AS rev {base} AND i.status='Converted'", params)
+    revenue = cur.fetchone()["rev"]
+    cur.execute(
+        f"SELECT COALESCE(SUM(fees_total-fees_paid),0) AS pend {base} AND i.status='Converted'",
+        params,
+    )
+    pending = cur.fetchone()["pend"]
+    return {
+        "total": total,
+        "open_c": open_c,
+        "converted": converted,
+        "closed": closed,
+        "todays_fu": todays_fu,
+        "revenue": revenue,
+        "pending": pending,
+    }
+
+
 @app.route("/dashboard")
 def dashboard():
     if "user_id" not in session:
@@ -280,22 +310,7 @@ def dashboard():
         base += " AND i.location_id=%s"
         params.append(loc_id)
 
-    cur.execute(f"SELECT COUNT(*) AS c {base}", params)
-    total = cur.fetchone()["c"]
-    cur.execute(f"SELECT COUNT(*) AS c {base} AND i.status='Open'", params)
-    open_c = cur.fetchone()["c"]
-    cur.execute(f"SELECT COUNT(*) AS c {base} AND i.status='Converted'", params)
-    converted = cur.fetchone()["c"]
-    cur.execute(f"SELECT COUNT(*) AS c {base} AND i.status='Closed'", params)
-    closed = cur.fetchone()["c"]
-
-    cur.execute(f"SELECT COALESCE(SUM(fees_paid),0) AS rev {base} AND i.status='Converted'", params)
-    revenue = cur.fetchone()["rev"]
-    cur.execute(
-        f"SELECT COALESCE(SUM(fees_total-fees_paid),0) AS pend {base} AND i.status='Converted'",
-        params,
-    )
-    pending = cur.fetchone()["pend"]
+    metrics = _fetch_dashboard_metrics(cur, base, params)
 
     base2 = """
         FROM inquiries i
@@ -313,8 +328,11 @@ def dashboard():
     )
     recent = cur.fetchall()
 
-    cur.execute(f"SELECT COUNT(*) AS c {base} AND i.followup_date=CURRENT_DATE AND i.status='Open'", params)
-    todays_fu = cur.fetchone()["c"]
+    if role == "teacher" and loc_id:
+        cur.execute("SELECT id,name FROM locations WHERE id=%s", [loc_id])
+    else:
+        cur.execute("SELECT id,name FROM locations ORDER BY name")
+    locations = cur.fetchall()
 
     # Monthly trend aggregation: use SQLite strftime when running with sqlite,
     # otherwise use PostgreSQL `to_char` to avoid percent-format literals that
@@ -348,16 +366,91 @@ def dashboard():
     close_db(conn, commit=False)
     return render_template(
         "dashboard.html",
-        total=total,
-        open_c=open_c,
-        converted=converted,
-        closed=closed,
-        revenue=revenue,
-        pending=pending,
+        total=metrics["total"],
+        open_c=metrics["open_c"],
+        converted=metrics["converted"],
+        closed=metrics["closed"],
+        revenue=metrics["revenue"],
+        pending=metrics["pending"],
         recent=recent,
-        todays_fu=todays_fu,
+        todays_fu=metrics["todays_fu"],
         trend=trend,
+        locations=locations,
     )
+
+
+@app.route("/dashboard/metric")
+def dashboard_metric():
+    if "user_id" not in session:
+        return jsonify({"ok": False, "msg": "Unauthorized."}), 401
+
+    from .database import close_db, get_db
+
+    metric = (request.args.get("metric") or "").strip().lower()
+    try:
+        location_id = parse_optional_int(request.args.get("location_id"), "Location")
+    except ValueError as exc:
+        return jsonify({"ok": False, "msg": str(exc)}), 400
+
+    role = session.get("role")
+    loc_id = session.get("location_id")
+    if role == "teacher" and loc_id:
+        location_id = loc_id
+
+    base = "FROM inquiries i WHERE 1=1"
+    params = []
+    if location_id:
+        base += " AND i.location_id=%s"
+        params.append(location_id)
+
+    metrics = {
+        "total": f"SELECT COUNT(*) AS v {base}",
+        "open": f"SELECT COUNT(*) AS v {base} AND i.status='Open'",
+        "converted": f"SELECT COUNT(*) AS v {base} AND i.status='Converted'",
+        "closed": f"SELECT COUNT(*) AS v {base} AND i.status='Closed'",
+        "todays_fu": f"SELECT COUNT(*) AS v {base} AND i.followup_date=CURRENT_DATE AND i.status='Open'",
+        "revenue": f"SELECT COALESCE(SUM(fees_paid),0) AS v {base} AND i.status='Converted'",
+        "pending": f"SELECT COALESCE(SUM(fees_total-fees_paid),0) AS v {base} AND i.status='Converted'",
+    }
+    if metric not in metrics:
+        return jsonify({"ok": False, "msg": "Unknown metric."}), 400
+
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute(metrics[metric], params)
+    value = cur.fetchone()["v"] or 0
+    close_db(conn, commit=False)
+    return jsonify({"ok": True, "metric": metric, "value": value})
+
+
+@app.route("/dashboard/summary")
+def dashboard_summary():
+    if "user_id" not in session:
+        return jsonify({"ok": False, "msg": "Unauthorized."}), 401
+
+    from .database import close_db, get_db
+
+    try:
+        location_id = parse_optional_int(request.args.get("location_id"), "Location")
+    except ValueError as exc:
+        return jsonify({"ok": False, "msg": str(exc)}), 400
+
+    role = session.get("role")
+    loc_id = session.get("location_id")
+    if role == "teacher" and loc_id:
+        location_id = loc_id
+
+    base = "FROM inquiries i WHERE 1=1"
+    params = []
+    if location_id:
+        base += " AND i.location_id=%s"
+        params.append(location_id)
+
+    conn = get_db()
+    cur = conn.cursor()
+    metrics = _fetch_dashboard_metrics(cur, base, params)
+    close_db(conn, commit=False)
+    return jsonify({"ok": True, **metrics})
 
 
 @app.errorhandler(400)

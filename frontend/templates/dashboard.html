@@ -4,11 +4,24 @@
 {% block head %}<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>{% endblock %}
 
 {% block content %}
+<div class="dashboard-filter">
+  <div class="dashboard-filter-label"><i class="fa-solid fa-location-dot"></i> Dashboard location</div>
+  <div class="dashboard-filter-control">
+    <select id="dashboardLocation" aria-label="Dashboard location filter">
+      <option value="">All locations</option>
+      {% for loc in locations %}
+      <option value="{{ loc.id }}">{{ loc.name }}</option>
+      {% endfor %}
+    </select>
+    <i class="fa-solid fa-chevron-down"></i>
+  </div>
+</div>
+
 <div class="stats-grid">
   <div class="stat-card stat-yellow">
     <div class="stat-icon"><i class="fa-solid fa-clipboard-list"></i></div>
     <div class="stat-body">
-      <div class="stat-num">{{ total }}</div>
+      <div class="stat-num" data-metric="total" data-format="count">{{ total }}</div>
       <div class="stat-label">Total Inquiries</div>
       <div class="stat-sub">All time</div>
     </div>
@@ -16,7 +29,7 @@
   <div class="stat-card stat-blue">
     <div class="stat-icon"><i class="fa-solid fa-hourglass-half"></i></div>
     <div class="stat-body">
-      <div class="stat-num">{{ open_c }}</div>
+      <div class="stat-num" data-metric="open" data-format="count">{{ open_c }}</div>
       <div class="stat-label">Pending Inquiries</div>
       <div class="stat-sub">Awaiting follow-up</div>
     </div>
@@ -24,7 +37,7 @@
   <div class="stat-card stat-green">
     <div class="stat-icon"><i class="fa-solid fa-indian-rupee-sign"></i></div>
     <div class="stat-body">
-      <div class="stat-num">&#8377;{{ "{:,.0f}".format(revenue|float) }}</div>
+      <div class="stat-num" data-metric="revenue" data-format="currency">&#8377;{{ "{:,.0f}".format(revenue|float) }}</div>
       <div class="stat-label">Revenue Collected</div>
       <div class="stat-sub">From admissions</div>
     </div>
@@ -32,7 +45,7 @@
   <div class="stat-card stat-red">
     <div class="stat-icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
     <div class="stat-body">
-      <div class="stat-num">&#8377;{{ "{:,.0f}".format(pending|float) }}</div>
+      <div class="stat-num" data-metric="pending" data-format="currency">&#8377;{{ "{:,.0f}".format(pending|float) }}</div>
       <div class="stat-label">Pending Fees</div>
       <div class="stat-sub">Outstanding</div>
     </div>
@@ -42,15 +55,24 @@
 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:18px">
   <div class="section-card" style="padding:16px 20px;display:flex;align-items:center;gap:14px;margin-bottom:0">
     <div style="width:42px;height:42px;background:#ECFDF5;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#10B981;font-size:1.1rem"><i class="fa-solid fa-user-graduate"></i></div>
-    <div><div style="font-size:1.4rem;font-weight:800">{{ converted }}</div><div style="font-size:.78rem;color:var(--muted)">Converted Students</div></div>
+    <div>
+      <div style="font-size:1.4rem;font-weight:800" class="stat-num" data-metric="converted" data-format="count">{{ converted }}</div>
+      <div style="font-size:.78rem;color:var(--muted)">Converted Students</div>
+    </div>
   </div>
   <div class="section-card" style="padding:16px 20px;display:flex;align-items:center;gap:14px;margin-bottom:0">
     <div style="width:42px;height:42px;background:#FEF3C7;border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--yellow);font-size:1.1rem"><i class="fa-solid fa-phone-volume"></i></div>
-    <div><div style="font-size:1.4rem;font-weight:800">{{ todays_fu }}</div><div style="font-size:.78rem;color:var(--muted)">Today's Follow-ups</div></div>
+    <div>
+      <div style="font-size:1.4rem;font-weight:800" class="stat-num" data-metric="todays_fu" data-format="count">{{ todays_fu }}</div>
+      <div style="font-size:.78rem;color:var(--muted)">Today's Follow-ups</div>
+    </div>
   </div>
   <div class="section-card" style="padding:16px 20px;display:flex;align-items:center;gap:14px;margin-bottom:0">
     <div style="width:42px;height:42px;background:#FEE2E2;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#EF4444;font-size:1.1rem"><i class="fa-solid fa-circle-xmark"></i></div>
-    <div><div style="font-size:1.4rem;font-weight:800">{{ closed }}</div><div style="font-size:.78rem;color:var(--muted)">Closed</div></div>
+    <div>
+      <div style="font-size:1.4rem;font-weight:800" class="stat-num" data-metric="closed" data-format="count">{{ closed }}</div>
+      <div style="font-size:.78rem;color:var(--muted)">Closed</div>
+    </div>
   </div>
 </div>
 
@@ -128,6 +150,45 @@
 
 {% block scripts %}
 <script>
+const formatNumber = (value) => new Intl.NumberFormat('en-IN').format(Number(value || 0));
+const formatCurrency = (value) => `\u20B9${formatNumber(value)}`;
+
+const updateMetricValue = (metric, value) => {
+  const target = document.querySelector(`.stat-num[data-metric="${metric}"]`);
+  if (!target) return;
+  const format = target.dataset.format || 'count';
+  target.textContent = format === 'currency' ? formatCurrency(value) : formatNumber(value);
+};
+
+const dashboardSelect = document.getElementById('dashboardLocation');
+dashboardSelect?.addEventListener('change', async () => {
+  document.querySelectorAll('.stat-num[data-metric]').forEach((node) => {
+    node.textContent = '...';
+  });
+  const params = new URLSearchParams();
+  if (dashboardSelect.value) params.set('location_id', dashboardSelect.value);
+  try {
+    const response = await fetch(`/dashboard/summary?${params.toString()}`);
+    const payload = await response.json();
+    if (!response.ok || !payload?.ok) throw new Error(payload?.msg || 'Failed');
+    updateMetricValue('total', payload.total);
+    updateMetricValue('open', payload.open_c);
+    updateMetricValue('converted', payload.converted);
+    updateMetricValue('closed', payload.closed);
+    updateMetricValue('todays_fu', payload.todays_fu);
+    updateMetricValue('revenue', payload.revenue);
+    updateMetricValue('pending', payload.pending);
+  } catch {
+    updateMetricValue('total', 0);
+    updateMetricValue('open', 0);
+    updateMetricValue('converted', 0);
+    updateMetricValue('closed', 0);
+    updateMetricValue('todays_fu', 0);
+    updateMetricValue('revenue', 0);
+    updateMetricValue('pending', 0);
+  }
+});
+
 const trend = {{ trend | tojson }};
 const formatChartMonth = (value) => value || '';
 if (trend && trend.length) {

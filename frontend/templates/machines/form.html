@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}{{ action }} Machine - HeavyLift CRM{% endblock %}
+{% block page_title %}{{ action }} Machine{% endblock %}
+{% block content %}
+{% set values = form_data or {} %}
+{% set center_value = values.get('center_id', machine.center_id if machine else '') | string %}
+{% set status_value = values.get('status', machine.status if machine else 'AVAILABLE') %}
+<div class="form-card">
+  <form method="POST">
+    {{ csrf_input() }}
+    <div class="form-row-2">
+      <div class="form-group">
+        <label>Center</label>
+        <div class="input-wrap"><i class="fa-solid fa-location-dot"></i>
+          <select name="center_id">
+            <option value="">- Select Center -</option>
+            {% for center in centers %}
+            <option value="{{ center.id }}" {% if center_value == center.id|string %}selected{% endif %}>{{ center.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <div class="input-wrap"><i class="fa-solid fa-signal"></i>
+          <select name="status">
+            {% for option in machine_status_options %}
+            <option value="{{ option }}" {% if status_value == option %}selected{% endif %}>{{ option }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Machine Name <span class="req">*</span></label>
+        <div class="input-wrap"><i class="fa-solid fa-gears"></i>
+          <input type="text" name="machine_name" required placeholder="e.g. Excavator 320D" value="{{ values.get('machine_name', machine.machine_name if machine else '') }}"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Machine Type</label>
+        <div class="input-wrap"><i class="fa-solid fa-screwdriver-wrench"></i>
+          <input type="text" name="machine_type" placeholder="e.g. Excavator" value="{{ values.get('machine_type', machine.machine_type if machine else '') }}"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Machine Number</label>
+        <div class="input-wrap"><i class="fa-solid fa-hashtag"></i>
+          <input type="text" name="machine_number" placeholder="e.g. MH-01-EX-2045" value="{{ values.get('machine_number', machine.machine_number if machine else '') }}"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Capacity</label>
+        <div class="input-wrap"><i class="fa-solid fa-weight-hanging"></i>
+          <input type="text" name="capacity" placeholder="e.g. 20 Ton" value="{{ values.get('capacity', machine.capacity if machine else '') }}"/>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Fuel Type</label>
+        <div class="input-wrap"><i class="fa-solid fa-gas-pump"></i>
+          <input type="text" name="fuel_type" placeholder="e.g. Diesel" value="{{ values.get('fuel_type', machine.fuel_type if machine else '') }}"/>
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Remarks</label>
+      <textarea name="remarks" rows="4" class="form-textarea" placeholder="Optional notes...">{{ values.get('remarks', machine.remarks if machine else '') }}</textarea>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+      <a href="{{ url_for('machines.index') }}" class="btn btn-outline"><i class="fa-solid fa-xmark"></i> Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

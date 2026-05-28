@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}{{ machine.machine_name }} Analytics - HeavyLift CRM{% endblock %}
+{% block page_title %}{{ machine.machine_name }} - Analytics{% endblock %}
+{% block head %}<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>{% endblock %}
+
+{% block content %}
+<div class="analytics-hero">
+  <div class="hero-icon"><i class="fa-solid fa-gears"></i></div>
+  <div>
+    <h2>{{ machine.machine_name }}</h2>
+    <p>{{ machine.center_name or 'Unassigned Center' }} &nbsp;|&nbsp; {{ machine.machine_type or 'Machine Profile' }}</p>
+  </div>
+  <div style="margin-left:auto;display:flex;gap:10px;flex-wrap:wrap">
+    {% if session.role in ['admin','developer'] %}
+    <a href="{{ url_for('machines.edit', machine_id=machine.id) }}" class="btn btn-primary btn-sm"><i class="fa-solid fa-pen"></i> Edit</a>
+    {% endif %}
+    <a href="{{ url_for('machines.index') }}" class="btn btn-outline btn-sm"><i class="fa-solid fa-arrow-left"></i> Back</a>
+  </div>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card stat-yellow">
+    <div class="stat-icon"><i class="fa-solid fa-warehouse"></i></div>
+    <div class="stat-body"><div class="stat-num">{{ stats.total_center_machines or 0 }}</div><div class="stat-label">Machines In This Center</div></div>
+  </div>
+  <div class="stat-card stat-green">
+    <div class="stat-icon"><i class="fa-solid fa-circle-check"></i></div>
+    <div class="stat-body"><div class="stat-num">{{ stats.available_machines or 0 }}</div><div class="stat-label">Available Machines</div></div>
+  </div>
+  <div class="stat-card stat-blue">
+    <div class="stat-icon"><i class="fa-solid fa-layer-group"></i></div>
+    <div class="stat-body"><div class="stat-num">{{ stats.same_type_machines or 0 }}</div><div class="stat-label">Same Type Machines</div></div>
+  </div>
+  <div class="stat-card stat-red">
+    <div class="stat-icon"><i class="fa-solid fa-gas-pump"></i></div>
+    <div class="stat-body"><div class="stat-num">{{ stats.same_fuel_machines or 0 }}</div><div class="stat-label">Same Fuel Machines</div></div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
+  <div class="section-card" style="margin-bottom:0">
+    <h3 class="section-title"><i class="fa-solid fa-chart-pie"></i>Status Distribution</h3>
+    {% if status_breakdown %}
+    <canvas id="machineStatusChart" height="130"></canvas>
+    {% else %}
+    <div class="empty-state"><i class="fa-solid fa-chart-pie"></i><p>No status data available.</p></div>
+    {% endif %}
+  </div>
+  <div class="section-card" style="margin-bottom:0">
+    <h3 class="section-title"><i class="fa-solid fa-circle-info"></i>Machine Details</h3>
+    <div class="table-wrap">
+      <table class="data-table">
+        <tbody>
+          <tr><th style="width:35%">Center</th><td>{{ machine.center_name or 'Unassigned' }}</td></tr>
+          <tr><th>Machine Type</th><td>{{ machine.machine_type or '-' }}</td></tr>
+          <tr><th>Machine Number</th><td>{{ machine.machine_number or '-' }}</td></tr>
+          <tr><th>Capacity</th><td>{{ machine.capacity or '-' }}</td></tr>
+          <tr><th>Fuel Type</th><td>{{ machine.fuel_type or '-' }}</td></tr>
+          <tr><th>Status</th><td><span class="badge badge-{{ machine.status|lower|replace(' ', '-') }}">{{ machine.status }}</span></td></tr>
+          <tr><th>Created</th><td>{{ machine.created_at.strftime('%Y-%m-%d') if machine.created_at else '-' }}</td></tr>
+          <tr><th>Remarks</th><td>{{ machine.remarks or '-' }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="section-card">
+  <h3 class="section-title"><i class="fa-solid fa-list"></i>Other Machines In This Center</h3>
+  {% if related_machines %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>Machine</th><th>Type</th><th>Number</th><th>Fuel</th><th>Status</th><th>Created</th></tr></thead>
+      <tbody>
+        {% for related in related_machines %}
+        <tr class="clickable-row" data-href="{{ url_for('machines.analytics', machine_id=related.id) }}">
+          <td><strong style="color:var(--yellow-dark)">{{ related.machine_name }}</strong></td>
+          <td>{{ related.machine_type or '-' }}</td>
+          <td>{{ related.machine_number or '-' }}</td>
+          <td>{{ related.fuel_type or '-' }}</td>
+          <td><span class="badge badge-{{ related.status|lower|replace(' ', '-') }}">{{ related.status }}</span></td>
+          <td>{{ related.created_at.strftime('%Y-%m-%d') if related.created_at else '-' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><i class="fa-solid fa-inbox"></i><p>No other machines found in this center.</p></div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const statusBreakdown = {{ status_breakdown | tojson }};
+if (statusBreakdown && statusBreakdown.length) {
+  new Chart(document.getElementById('machineStatusChart'), {
+    type: 'doughnut',
+    data: {
+      labels: statusBreakdown.map(row => row.status),
+      datasets: [{
+        data: statusBreakdown.map(row => row.total),
+        backgroundColor: ['#F59E0B', '#10B981', '#3B82F6', '#EF4444', '#6B7280'],
+        borderWidth: 0,
+      }],
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { font: { family: 'Roboto', size: 11 } },
+        },
+      },
+    },
+  });
+}
+</script>
+{% endblock %}

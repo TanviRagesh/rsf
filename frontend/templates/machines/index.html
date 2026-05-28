@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Machines - HeavyLift CRM{% endblock %}
+{% block page_title %}Machine Management{% endblock %}
+{% block content %}
+<div class="section-card">
+  <div class="toolbar">
+    <form class="search-form" method="GET">
+      <div class="search-wrap">
+        <div class="input-wrap"><i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" name="q" value="{{ search }}" placeholder="Search machines..."/>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Search</button>
+        {% if search %}<a href="{{ url_for('machines.index') }}" class="btn btn-outline btn-sm">Clear</a>{% endif %}
+      </div>
+    </form>
+    {% if session.role in ['admin','developer'] %}
+    <a href="{{ url_for('machines.add') }}" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Add Machine</a>
+    {% endif %}
+  </div>
+
+  <div class="tip-box" style="margin-bottom:14px">
+    <i class="fa-solid fa-gears"></i>
+    <span>Click a machine row to view its profile and center-level analytics.</span>
+  </div>
+
+  {% if machines %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th>#</th><th>Machine Name</th><th>Center</th><th>Type</th><th>Number</th><th>Capacity</th><th>Fuel</th><th>Status</th><th>Created</th>
+        {% if session.role in ['admin','developer'] %}<th>Actions</th>{% endif %}
+      </tr></thead>
+      <tbody>
+        {% for machine in machines %}
+        <tr class="clickable-row" data-href="{{ url_for('machines.analytics', machine_id=machine.id) }}">
+          <td>{{ loop.index }}</td>
+          <td><strong style="color:var(--yellow-dark)">{{ machine.machine_name }}</strong></td>
+          <td>{{ machine.center_name or 'Unassigned' }}</td>
+          <td>{{ machine.machine_type or '-' }}</td>
+          <td>{{ machine.machine_number or '-' }}</td>
+          <td>{{ machine.capacity or '-' }}</td>
+          <td>{{ machine.fuel_type or '-' }}</td>
+          <td><span class="badge badge-{{ machine.status|lower|replace(' ', '-') }}">{{ machine.status }}</span></td>
+          <td>{{ machine.created_at.strftime('%Y-%m-%d') if machine.created_at else '-' }}</td>
+          {% if session.role in ['admin','developer'] %}
+          <td onclick="event.stopPropagation()">
+            <div class="action-cell">
+              <a href="{{ url_for('machines.analytics', machine_id=machine.id) }}" class="action-btn btn-analytics" title="Analytics"><i class="fa-solid fa-chart-bar"></i></a>
+              <a href="{{ url_for('machines.edit', machine_id=machine.id) }}" class="action-btn btn-edit" title="Edit"><i class="fa-solid fa-pen"></i></a>
+              <form method="POST" action="{{ url_for('machines.delete', machine_id=machine.id) }}" style="display:inline" onsubmit="return confirm('Delete this machine?')">
+                {{ csrf_input() }}
+                <button type="submit" class="action-btn btn-delete" title="Delete"><i class="fa-solid fa-trash"></i></button>
+              </form>
+            </div>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><i class="fa-solid fa-gears"></i>
+    <p>No machines found. {% if session.role in ['admin','developer'] %}<a href="{{ url_for('machines.add') }}">Add one -></a>{% endif %}</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

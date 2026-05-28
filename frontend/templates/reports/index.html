@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+{% block title %}Reports - HeavyLift CRM{% endblock %}
+{% block page_title %}Reports & Analytics{% endblock %}
+{% block head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="section-card" style="padding:16px 22px">
+  <div class="date-range-form">
+    <label>From:</label><input type="date" id="dateFrom"/>
+    <label>To:</label><input type="date" id="dateTo"/>
+    <button class="btn btn-primary btn-sm" onclick="loadReports()"><i class="fa-solid fa-chart-bar"></i> Generate</button>
+    <button class="btn btn-outline btn-sm" onclick="setPreset('month')">This Month</button>
+    <button class="btn btn-outline btn-sm" onclick="setPreset('year')">This Year</button>
+    <button class="btn btn-outline btn-sm" onclick="setPreset('all')">All Time</button>
+  </div>
+</div>
+
+<div class="stats-grid" id="summaryCards">
+  <div class="stat-card stat-yellow"><div class="stat-icon"><i class="fa-solid fa-clipboard-list"></i></div>
+    <div class="stat-body"><div class="stat-num" id="sTotal">-</div><div class="stat-label">Total Inquiries</div></div></div>
+  <div class="stat-card stat-green"><div class="stat-icon"><i class="fa-solid fa-user-graduate"></i></div>
+    <div class="stat-body"><div class="stat-num" id="sConverted">-</div><div class="stat-label">Admissions</div></div></div>
+  <div class="stat-card stat-blue"><div class="stat-icon"><i class="fa-solid fa-indian-rupee-sign"></i></div>
+    <div class="stat-body"><div class="stat-num" id="sRevenue">-</div><div class="stat-label">Revenue Collected</div></div></div>
+  <div class="stat-card stat-red"><div class="stat-icon"><i class="fa-solid fa-hourglass-half"></i></div>
+    <div class="stat-body"><div class="stat-num" id="sPending">-</div><div class="stat-label">Pending Fees</div></div></div>
+</div>
+
+<div class="chart-row">
+  <div class="section-card chart-card" style="margin-bottom:0">
+    <h4 class="section-title"><i class="fa-solid fa-chart-line"></i> Inquiries vs Admissions Trend</h4>
+    <canvas id="trendChart" height="110"></canvas>
+  </div>
+  <div class="section-card chart-card" style="margin-bottom:0">
+    <h4 class="section-title"><i class="fa-solid fa-chart-pie"></i> Status Breakdown</h4>
+    <canvas id="statusChart" height="110"></canvas>
+  </div>
+</div>
+<br>
+
+<div class="chart-row">
+  <div class="section-card chart-card" style="margin-bottom:0">
+    <h4 class="section-title"><i class="fa-solid fa-location-dot"></i> Location Performance</h4>
+    <canvas id="locationChart" height="110"></canvas>
+  </div>
+  <div class="section-card chart-card" style="margin-bottom:0">
+    <h4 class="section-title"><i class="fa-solid fa-book-open"></i> Top Courses</h4>
+    <canvas id="courseChart" height="110"></canvas>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+Chart.defaults.font.family = 'Roboto';
+Chart.defaults.color = '#6B7280';
+
+const YELLOW = '#F59E0B';
+const GREEN = '#10B981';
+const RED = '#EF4444';
+const BLUE = '#3B82F6';
+const PURPLE = '#8B5CF6';
+const TEAL = '#14B8A6';
+
+let charts = {};
+
+function destroy(id) {
+  if (charts[id]) {
+    charts[id].destroy();
+    delete charts[id];
+  }
+}
+
+function formatCurrency(value) {
+  return `Rs ${Number(value || 0).toLocaleString('en-IN')}`;
+}
+
+function formatChartMonth(value) {
+  return /^\d{4}-\d{2}$/.test(value || '')
+    ? new Date(`${value}-01T00:00:00`).toLocaleDateString('en-IN', {month: 'short', year: '2-digit'})
+    : (value || '');
+}
+
+function setPreset(type) {
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = today.getMonth();
+  document.getElementById('dateTo').value = today.toISOString().split('T')[0];
+  document.getElementById('dateFrom').value = type === 'month'
+    ? new Date(y, m, 1).toISOString().split('T')[0]
+    : type === 'year'
+      ? `${y}-01-01`
+      : '2020-01-01';
+  loadReports();
+}
+
+async function loadReports() {
+  const from = document.getElementById('dateFrom').value || '';
+  const to = document.getElementById('dateTo').value || '';
+  const response = await fetch(`/reports/data?from=${from}&to=${to}`);
+  const data = await response.json();
+
+  if (!response.ok || !data.ok) {
+    alert(data.msg || 'Unable to load report data.');
+    return;
+  }
+
+  const summary = data.summary || {};
+  document.getElementById('sTotal').textContent = summary.total || 0;
+  document.getElementById('sConverted').textContent = summary.converted || 0;
+  document.getElementById('sRevenue').textContent = formatCurrency(summary.revenue);
+  document.getElementById('sPending').textContent = formatCurrency(summary.pending);
+
+  destroy('trend');
+  charts.trend = new Chart(document.getElementById('trendChart'), {
+    type: 'line',
+    data: {
+      labels: data.trend.map((row) => formatChartMonth(row.month)),
+      datasets: [
+        {
+          label: 'Inquiries',
+          data: data.trend.map((row) => Number(row.inquiries || 0)),
+          borderColor: YELLOW,
+          backgroundColor: YELLOW,
+          tension: 0.35,
+          fill: false,
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          borderWidth: 2.5,
+        },
+        {
+          label: 'Admissions',
+          data: data.trend.map((row) => Number(row.admissions || 0)),
+          borderColor: GREEN,
+          backgroundColor: GREEN,
+          tension: 0.35,
+          fill: false,
+          pointRadius: 3,
+          pointHoverRadius: 5,
+          borderWidth: 2.5,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: {mode: 'index', intersect: false},
+      plugins: {
+        legend: {position: 'top', labels: {boxWidth: 12, padding: 14, font: {size: 12}}}
+      },
+      scales: {
+        y: {beginAtZero: true, grid: {color: '#F3F4F6'}, ticks: {stepSize: 1}},
+        x: {grid: {display: false}}
+      }
+    }
+  });
+
+  destroy('status');
+  const statusColors = {Open: YELLOW, Converted: GREEN, Closed: RED};
+  charts.status = new Chart(document.getElementById('statusChart'), {
+    type: 'doughnut',
+    data: {
+      labels: data.status.map((row) => row.status),
+      datasets: [{
+        data: data.status.map((row) => Number(row.total || 0)),
+        backgroundColor: data.status.map((row) => statusColors[row.status] || BLUE),
+        hoverOffset: 8,
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      cutout: '65%',
+      plugins: {
+        legend: {position: 'bottom', labels: {boxWidth: 12, padding: 12, font: {size: 11}}},
+        tooltip: {callbacks: {label: (ctx) => `${ctx.label}: ${ctx.raw}`}}
+      }
+    }
+  });
+
+  destroy('location');
+  charts.location = new Chart(document.getElementById('locationChart'), {
+    type: 'bar',
+    data: {
+      labels: data.location.map((row) => row.location || 'Unknown'),
+      datasets: [
+        {
+          label: 'Inquiries',
+          data: data.location.map((row) => Number(row.inquiries || 0)),
+          backgroundColor: YELLOW,
+          borderRadius: 6,
+          barPercentage: 0.6,
+        },
+        {
+          label: 'Admissions',
+          data: data.location.map((row) => Number(row.admissions || 0)),
+          backgroundColor: GREEN,
+          borderRadius: 6,
+          barPercentage: 0.6,
+        },
+        {
+          label: 'Revenue',
+          data: data.location.map((row) => Number(row.revenue || 0)),
+          backgroundColor: BLUE,
+          borderRadius: 6,
+          barPercentage: 0.6,
+          yAxisID: 'y1',
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: {mode: 'index'},
+      plugins: {
+        legend: {position: 'top', labels: {boxWidth: 12, padding: 12, font: {size: 11}}},
+        tooltip: {
+          callbacks: {
+            label: (ctx) => ctx.dataset.label === 'Revenue'
+              ? `${ctx.dataset.label}: ${formatCurrency(ctx.raw)}`
+              : `${ctx.dataset.label}: ${ctx.raw}`
+          }
+        }
+      },
+      scales: {
+        y: {beginAtZero: true, grid: {color: '#F3F4F6'}},
+        y1: {
+          beginAtZero: true,
+          position: 'right',
+          grid: {drawOnChartArea: false},
+          ticks: {callback: (value) => formatCurrency(value)}
+        },
+        x: {grid: {display: false}}
+      }
+    }
+  });
+
+  destroy('course');
+  charts.course = new Chart(document.getElementById('courseChart'), {
+    type: 'bar',
+    data: {
+      labels: data.course.map((row) => row.course || 'Unknown'),
+      datasets: [
+        {
+          label: 'Inquiries',
+          data: data.course.map((row) => Number(row.inquiries || 0)),
+          backgroundColor: PURPLE,
+          borderRadius: 6,
+        },
+        {
+          label: 'Admissions',
+          data: data.course.map((row) => Number(row.admissions || 0)),
+          backgroundColor: TEAL,
+          borderRadius: 6,
+        }
+      ]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      plugins: {
+        legend: {display: true, position: 'top', labels: {boxWidth: 12, padding: 12, font: {size: 11}}},
+        tooltip: {callbacks: {label: (ctx) => `${ctx.dataset.label}: ${ctx.raw}`}}
+      },
+      scales: {
+        x: {beginAtZero: true, grid: {color: '#F3F4F6'}},
+        y: {grid: {display: false}}
+      }
+    }
+  });
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  const today = new Date();
+  document.getElementById('dateTo').value = today.toISOString().split('T')[0];
+  document.getElementById('dateFrom').value = `${today.getFullYear()}-01-01`;
+  loadReports();
+});
+</script>
+{% endblock %}

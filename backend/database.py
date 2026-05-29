@@ -60,6 +60,81 @@ def _get_pool():
     return _pool
 
 
+def _migrate_inquiry_attachment_columns(cur):
+    attachment_specs = {
+        "student_photo": {
+            "legacy_types": ["student_photo"],
+            "columns": {
+                "file_path": "student_photo_file_path",
+                "original_filename": "student_photo_original_filename",
+                "stored_filename": "student_photo_stored_filename",
+                "mime_type": "student_photo_mime_type",
+                "file_size": "student_photo_file_size",
+            },
+        },
+        "govt_id": {
+            "legacy_types": ["govt_id", "govt_id_front", "govt_id_back"],
+            "columns": {
+                "file_path": "govt_id_file_path",
+                "original_filename": "govt_id_original_filename",
+                "stored_filename": "govt_id_stored_filename",
+                "mime_type": "govt_id_mime_type",
+                "file_size": "govt_id_file_size",
+            },
+        },
+    }
+
+    files_to_delete = []
+    for spec in attachment_specs.values():
+        placeholders = ",".join(["%s"] * len(spec["legacy_types"]))
+        cur.execute(
+            f"SELECT inquiry_id, original_filename, stored_filename, file_path, mime_type, file_size FROM inquiry_documents WHERE document_type IN ({placeholders}) ORDER BY inquiry_id, created_at DESC, id DESC;",
+            spec["legacy_types"],
+        )
+        rows = cur.fetchall()
+        if not rows:
+            continue
+
+        grouped = {}
+        for row in rows:
+            grouped.setdefault(row["inquiry_id"], []).append(row)
+
+        for inquiry_id, docs in grouped.items():
+            cur.execute(
+                "SELECT id, student_photo_file_path, govt_id_file_path FROM inquiries WHERE id=%s;",
+                (inquiry_id,),
+            )
+            inquiry = cur.fetchone() or {}
+            latest = docs[0]
+            keep_path = inquiry.get(spec["columns"]["file_path"]) or latest.get("file_path")
+
+            if latest.get("file_path") and not inquiry.get(spec["columns"]["file_path"]):
+                column_map = spec["columns"]
+                cur.execute(
+                    f"UPDATE inquiries SET {column_map['file_path']}=%s, {column_map['original_filename']}=%s, {column_map['stored_filename']}=%s, {column_map['mime_type']}=%s, {column_map['file_size']}=%s WHERE id=%s;",
+                    (
+                        latest.get("file_path"),
+                        latest.get("original_filename"),
+                        latest.get("stored_filename"),
+                        latest.get("mime_type"),
+                        latest.get("file_size"),
+                        inquiry_id,
+                    ),
+                )
+
+            cur.execute(
+                f"DELETE FROM inquiry_documents WHERE inquiry_id=%s AND document_type IN ({placeholders});",
+                [inquiry_id, *spec["legacy_types"]],
+            )
+
+            for doc in docs:
+                file_path = doc.get("file_path")
+                if file_path and file_path != keep_path:
+                    files_to_delete.append(file_path)
+
+    return files_to_delete
+
+
 class SQLiteCursor:
     def __init__(self, cur):
         self._cur = cur
@@ -334,6 +409,16 @@ def init_db():
             emergency3_name  VARCHAR(100),
             emergency3_mobile VARCHAR(20),
             emergency3_relation VARCHAR(20),
+            student_photo_file_path TEXT,
+            student_photo_original_filename VARCHAR(255),
+            student_photo_stored_filename VARCHAR(255),
+            student_photo_mime_type VARCHAR(100),
+            student_photo_file_size INTEGER,
+            govt_id_file_path TEXT,
+            govt_id_original_filename VARCHAR(255),
+            govt_id_stored_filename VARCHAR(255),
+            govt_id_mime_type VARCHAR(100),
+            govt_id_file_size INTEGER,
             assigned_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
             created_at       TIMESTAMP NOT NULL DEFAULT NOW(),
             CONSTRAINT status_chk CHECK (status IN ('Open','Converted','Closed'))
@@ -502,6 +587,16 @@ def init_db():
         "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS emergency3_name VARCHAR(100)",
         "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS emergency3_mobile VARCHAR(20)",
         "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS emergency3_relation VARCHAR(20)",
+        "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS student_photo_file_path TEXT",
+        "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS student_photo_original_filename VARCHAR(255)",
+        "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS student_photo_stored_filename VARCHAR(255)",
+        "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS student_photo_mime_type VARCHAR(100)",
+        "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS student_photo_file_size INTEGER",
+        "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS govt_id_file_path TEXT",
+        "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS govt_id_original_filename VARCHAR(255)",
+        "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS govt_id_stored_filename VARCHAR(255)",
+        "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS govt_id_mime_type VARCHAR(100)",
+        "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS govt_id_file_size INTEGER",
         "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS assigned_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL",
         "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW()",
         "CREATE TABLE IF NOT EXISTS inquiry_documents (id SERIAL PRIMARY KEY, inquiry_id INTEGER NOT NULL REFERENCES inquiries(id) ON DELETE CASCADE, document_type VARCHAR(40) NOT NULL, original_filename VARCHAR(255) NOT NULL, stored_filename VARCHAR(255) NOT NULL, file_path TEXT NOT NULL, mime_type VARCHAR(100), file_size INTEGER, created_at TIMESTAMP NOT NULL DEFAULT NOW())",
@@ -516,9 +611,22 @@ def init_db():
         except Exception:
             conn.rollback()
 
+    legacy_files_to_delete = []
+    try:
+        legacy_files_to_delete = _migrate_inquiry_attachment_columns(cur)
+        conn.commit()
+    except Exception:
+        conn.rollback()
+
     try:
         cur.close()
     except Exception:
         pass
     close_db(conn)
+    for file_path in legacy_files_to_delete:
+        try:
+            if file_path and os.path.exists(file_path):
+                os.remove(file_path)
+        except OSError:
+            pass
     print("HeavyLift CRM database ready.")

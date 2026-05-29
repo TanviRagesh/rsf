@@ -39,8 +39,23 @@ inquiries_bp = Blueprint("inquiries", __name__, url_prefix="/inquiries")
 
 ALLOWED_UPLOAD_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".pdf"}
 PHOTO_DOCUMENT_TYPES = {"student_photo"}
-SINGLE_DOCUMENT_TYPES = {"student_photo", "govt_id"}
-LEGACY_GOVT_ID_TYPES = {"govt_id", "govt_id_front", "govt_id_back"}
+ATTACHMENT_TYPES = {"student_photo", "govt_id"}
+ATTACHMENT_COLUMN_MAP = {
+    "student_photo": {
+        "file_path": "student_photo_file_path",
+        "original_filename": "student_photo_original_filename",
+        "stored_filename": "student_photo_stored_filename",
+        "mime_type": "student_photo_mime_type",
+        "file_size": "student_photo_file_size",
+    },
+    "govt_id": {
+        "file_path": "govt_id_file_path",
+        "original_filename": "govt_id_original_filename",
+        "stored_filename": "govt_id_stored_filename",
+        "mime_type": "govt_id_mime_type",
+        "file_size": "govt_id_file_size",
+    },
+}
 
 
 def _uploads_root():
@@ -70,20 +85,20 @@ def _normalize_upload_label(label):
     return (label or "").strip()
 
 
-def _collect_inquiry_uploads(files):
+def _collect_attachment_uploads(files):
     uploads = []
-    single_types = {
-        "student_photo": files.get("student_photo"),
-        "govt_id": files.get("govt_id"),
-    }
-    for document_type, upload in single_types.items():
+    for attachment_type in ATTACHMENT_TYPES:
+        upload = files.get(attachment_type)
         if upload and upload.filename:
-            uploads.append((document_type, upload))
+            uploads.append((attachment_type, upload))
+    return uploads
 
+
+def _collect_supporting_uploads(files):
+    uploads = []
     for upload in files.getlist("supporting_documents"):
         if upload and upload.filename:
             uploads.append(("supporting_document", upload))
-
     return uploads
 
 
@@ -106,6 +121,12 @@ def _save_inquiry_upload(iid, document_type, upload):
         "mime_type": upload.mimetype or None,
         "file_size": os.path.getsize(file_path),
     }
+
+
+def _save_inquiry_attachment(iid, attachment_type, upload):
+    if attachment_type not in ATTACHMENT_TYPES:
+        raise ValueError("Unsupported attachment type.")
+    return _save_inquiry_upload(iid, attachment_type, upload)
 
 
 def _load_document_rows(cur, iid):
@@ -141,6 +162,46 @@ def _replace_single_document(cur, iid, document_type):
         [iid, *document_types],
     )
     return cur.fetchall()
+
+
+def _persist_inquiry_attachments(cur, iid, uploads, existing_inquiry=None):
+    removed_files = []
+    saved_files = []
+    try:
+        for attachment_type, upload in uploads:
+            saved = _save_inquiry_attachment(iid, attachment_type, upload)
+            saved_files.append(saved["file_path"])
+            column_map = ATTACHMENT_COLUMN_MAP[attachment_type]
+            cur.execute(
+                f"""
+                UPDATE inquiries SET
+                  {column_map['file_path']}=%s,
+                  {column_map['original_filename']}=%s,
+                  {column_map['stored_filename']}=%s,
+                  {column_map['mime_type']}=%s,
+                  {column_map['file_size']}=%s
+                WHERE id=%s;
+                """,
+                (
+                    saved["file_path"],
+                    saved["original_filename"],
+                    saved["stored_filename"],
+                    saved["mime_type"],
+                    saved["file_size"],
+                    iid,
+                ),
+            )
+            old_path = None
+            if existing_inquiry:
+                old_path = existing_inquiry.get(column_map["file_path"])
+            if old_path and old_path != saved["file_path"]:
+                removed_files.append(old_path)
+    except Exception:
+        for file_path in saved_files:
+            _remove_document_file(file_path)
+        raise
+
+    return removed_files, saved_files
 
 
 def _persist_inquiry_documents(cur, iid, uploads, replace_single=True):
@@ -239,8 +300,10 @@ def add():
             offer_id = parse_optional_int(form.get("offer_id"), "Offer")
             fees_total = calculate_total_fees(course_id, offer_id)
             cleaned = validate_inquiry_form(form, fees_total)
-            uploads = _collect_inquiry_uploads(request.files)
-            for document_type, upload in uploads:
+            attachment_uploads = _collect_attachment_uploads(request.files)
+            supporting_uploads = _collect_supporting_uploads(request.files)
+            uploads = supporting_uploads
+            for document_type, upload in attachment_uploads + supporting_uploads:
                 if not _is_allowed_upload(upload):
                     raise ValueError(f"{DOCUMENT_TYPE_LABELS.get(document_type, 'Document')} must be an image or PDF file.")
             if role == "teacher" and assigned_loc_id:
@@ -308,8 +371,12 @@ def add():
                 inquiry_row = cur.fetchone() or {}
                 inquiry_id = inquiry_row.get("id")
                 removed_files = []
+                if attachment_uploads and inquiry_id:
+                    attachment_removed_files, _saved_files = _persist_inquiry_attachments(cur, inquiry_id, attachment_uploads)
+                    removed_files.extend(attachment_removed_files)
                 if uploads and inquiry_id:
-                    removed_files, _saved_files = _persist_inquiry_documents(cur, inquiry_id, uploads, replace_single=False)
+                    supporting_removed_files, _saved_files = _persist_inquiry_documents(cur, inquiry_id, uploads, replace_single=False)
+                    removed_files.extend(supporting_removed_files)
                 close_db(conn)
                 for file_path in removed_files:
                     _remove_document_file(file_path)
@@ -388,13 +455,16 @@ def edit(iid):
             offer_id = parse_optional_int(form.get("offer_id"), "Offer")
             fees_total = calculate_total_fees(course_id, offer_id)
             cleaned = validate_inquiry_form(form, fees_total)
-            uploads = _collect_inquiry_uploads(request.files)
-            for document_type, upload in uploads:
+            attachment_uploads = _collect_attachment_uploads(request.files)
+            supporting_uploads = _collect_supporting_uploads(request.files)
+            uploads = supporting_uploads
+            for document_type, upload in attachment_uploads + supporting_uploads:
                 if not _is_allowed_upload(upload):
                     raise ValueError(f"{DOCUMENT_TYPE_LABELS.get(document_type, 'Document')} must be an image or PDF file.")
             conn = get_db()
             cur = conn.cursor()
-            if not fetch_inquiry(cur, iid, role, loc_id):
+            current_inquiry = fetch_inquiry(cur, iid, role, loc_id)
+            if not current_inquiry:
                 close_db(conn, commit=False)
                 flash("Not found.", "danger")
                 return redirect(url_for("inquiries.index"))
@@ -458,8 +528,12 @@ def edit(iid):
                 ),
             )
             removed_files = []
+            if attachment_uploads:
+                attachment_removed_files, _saved_files = _persist_inquiry_attachments(cur, iid, attachment_uploads, existing_inquiry=current_inquiry)
+                removed_files.extend(attachment_removed_files)
             if uploads:
-                removed_files, _saved_files = _persist_inquiry_documents(cur, iid, uploads, replace_single=True)
+                supporting_removed_files, _saved_files = _persist_inquiry_documents(cur, iid, uploads, replace_single=True)
+                removed_files.extend(supporting_removed_files)
             close_db(conn)
             for file_path in removed_files:
                 _remove_document_file(file_path)
@@ -540,6 +614,36 @@ def document_file(iid, doc_id):
     )
 
 
+@inquiries_bp.route("/<int:iid>/attachments/<attachment_type>")
+@login_required
+def attachment_file(iid, attachment_type):
+    if attachment_type not in ATTACHMENT_COLUMN_MAP:
+        abort(404)
+
+    role = session.get("role")
+    loc_id = session.get("location_id")
+    conn = get_db()
+    cur = conn.cursor()
+    inquiry = fetch_inquiry(cur, iid, role, loc_id)
+    close_db(conn, commit=False)
+    if not inquiry:
+        abort(404)
+
+    column_map = ATTACHMENT_COLUMN_MAP[attachment_type]
+    file_path = inquiry.get(column_map["file_path"])
+    if not file_path or not os.path.exists(file_path):
+        abort(404)
+
+    download = request.args.get("download") == "1"
+    return send_file(
+        file_path,
+        mimetype=inquiry.get(column_map["mime_type"]) or None,
+        as_attachment=download,
+        download_name=inquiry.get(column_map["original_filename"]) or Path(file_path).name,
+        conditional=True,
+    )
+
+
 @inquiries_bp.route("/<int:iid>/documents/<int:doc_id>/delete", methods=["POST"])
 @login_required
 @role_required("admin", "developer", "teacher")
@@ -571,14 +675,52 @@ def delete_document(iid, doc_id):
     return redirect(url_for("inquiries.edit", iid=iid))
 
 
+@inquiries_bp.route("/<int:iid>/attachments/<attachment_type>/delete", methods=["POST"])
+@login_required
+@role_required("admin", "developer", "teacher")
+def delete_attachment(iid, attachment_type):
+    if attachment_type not in ATTACHMENT_COLUMN_MAP:
+        abort(404)
+
+    role = session.get("role")
+    loc_id = session.get("location_id")
+    conn = get_db()
+    cur = conn.cursor()
+    inquiry = fetch_inquiry(cur, iid, role, loc_id)
+    if not inquiry:
+        close_db(conn, commit=False)
+        flash("Not found.", "danger")
+        return redirect(url_for("inquiries.index"))
+
+    column_map = ATTACHMENT_COLUMN_MAP[attachment_type]
+    file_path = inquiry.get(column_map["file_path"])
+    cur.execute(
+        f"UPDATE inquiries SET {column_map['file_path']}=NULL, {column_map['original_filename']}=NULL, {column_map['stored_filename']}=NULL, {column_map['mime_type']}=NULL, {column_map['file_size']}=NULL WHERE id=%s;",
+        (iid,),
+    )
+    close_db(conn)
+    _remove_document_file(file_path)
+    flash(f"{DOCUMENT_TYPE_LABELS.get(attachment_type, 'Attachment')} deleted.", "success")
+    return redirect(url_for("inquiries.edit", iid=iid))
+
+
 @inquiries_bp.route("/<int:iid>/delete", methods=["POST"])
 @login_required
 @role_required("admin", "developer")
 def delete(iid):
     conn = get_db()
     cur = conn.cursor()
+    cur.execute(
+        "SELECT student_photo_file_path, govt_id_file_path FROM inquiries WHERE id=%s;",
+        (iid,),
+    )
+    inquiry = cur.fetchone() or {}
+    cur.execute("SELECT file_path FROM inquiry_documents WHERE inquiry_id=%s;", (iid,))
+    document_paths = [row.get("file_path") for row in cur.fetchall()]
     cur.execute("DELETE FROM inquiries WHERE id=%s;", (iid,))
     close_db(conn)
+    for file_path in [inquiry.get("student_photo_file_path"), inquiry.get("govt_id_file_path"), *document_paths]:
+        _remove_document_file(file_path)
     flash("Deleted.", "success")
     return redirect(url_for("inquiries.index"))
 

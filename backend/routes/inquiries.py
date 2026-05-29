@@ -152,6 +152,21 @@ def _remove_document_file(file_path):
         pass
 
 
+def _missing_attachment_response(label, as_download=False):
+    placeholder_svg = f"""<svg xmlns='http://www.w3.org/2000/svg' width='900' height='520' viewBox='0 0 900 520'>
+  <rect width='900' height='520' rx='24' fill='#f8fafc'/>
+  <rect x='24' y='24' width='852' height='472' rx='20' fill='#ffffff' stroke='#e5e7eb'/>
+  <text x='450' y='240' text-anchor='middle' font-family='Arial, sans-serif' font-size='34' fill='#1f2937'>{label}</text>
+  <text x='450' y='288' text-anchor='middle' font-family='Arial, sans-serif' font-size='18' fill='#6b7280'>Attachment file is unavailable</text>
+</svg>"""
+    if as_download:
+        return make_response("Attachment file is unavailable.", 404)
+    response = make_response(placeholder_svg)
+    response.headers["Content-Type"] = "image/svg+xml"
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 def _replace_single_document(cur, iid, document_type):
     document_types = [document_type]
     if document_type == "govt_id":
@@ -584,6 +599,7 @@ def edit(iid):
 def document_file(iid, doc_id):
     role = session.get("role")
     loc_id = session.get("location_id")
+    download = request.args.get("download") == "1"
     conn = get_db()
     cur = conn.cursor()
     inquiry = fetch_inquiry(cur, iid, role, loc_id)
@@ -602,9 +618,8 @@ def document_file(iid, doc_id):
 
     file_path = document.get("file_path")
     if not file_path or not os.path.exists(file_path):
-        abort(404)
+        return _missing_attachment_response(DOCUMENT_TYPE_LABELS.get(document.get("document_type"), "Attachment"), as_download=download)
 
-    download = request.args.get("download") == "1"
     return send_file(
         file_path,
         mimetype=document.get("mime_type") or None,
@@ -622,6 +637,7 @@ def attachment_file(iid, attachment_type):
 
     role = session.get("role")
     loc_id = session.get("location_id")
+    download = request.args.get("download") == "1"
     conn = get_db()
     cur = conn.cursor()
     inquiry = fetch_inquiry(cur, iid, role, loc_id)
@@ -632,9 +648,8 @@ def attachment_file(iid, attachment_type):
     column_map = ATTACHMENT_COLUMN_MAP[attachment_type]
     file_path = inquiry.get(column_map["file_path"])
     if not file_path or not os.path.exists(file_path):
-        abort(404)
+        return _missing_attachment_response(DOCUMENT_TYPE_LABELS.get(attachment_type, "Attachment"), as_download=download)
 
-    download = request.args.get("download") == "1"
     return send_file(
         file_path,
         mimetype=inquiry.get(column_map["mime_type"]) or None,

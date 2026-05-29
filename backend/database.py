@@ -372,6 +372,20 @@ def init_db():
     """)
 
     exec_sql("""
+        CREATE TABLE IF NOT EXISTS inquiry_documents (
+            id                SERIAL PRIMARY KEY,
+            inquiry_id        INTEGER NOT NULL REFERENCES inquiries(id) ON DELETE CASCADE,
+            document_type     VARCHAR(40) NOT NULL,
+            original_filename VARCHAR(255) NOT NULL,
+            stored_filename   VARCHAR(255) NOT NULL,
+            file_path         TEXT NOT NULL,
+            mime_type         VARCHAR(100),
+            file_size         INTEGER,
+            created_at        TIMESTAMP NOT NULL DEFAULT NOW()
+        );
+    """)
+
+    exec_sql("""
         CREATE TABLE IF NOT EXISTS submissions (
             id             SERIAL PRIMARY KEY,
             name           VARCHAR(120) NOT NULL,
@@ -433,6 +447,7 @@ def init_db():
         "CREATE INDEX IF NOT EXISTS idx_submissions_status_created_at ON submissions(status, created_at DESC)",
         "CREATE INDEX IF NOT EXISTS idx_practicals_center_date ON trainer_practicals(center_id, practical_date DESC)",
         "CREATE INDEX IF NOT EXISTS idx_placements_inquiry_date ON placements(inquiry_id, placement_date DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_inquiry_documents_inquiry_type_created_at ON inquiry_documents(inquiry_id, document_type, created_at DESC)",
         "CREATE INDEX IF NOT EXISTS idx_courses_location_position ON courses(location_id, position, created_at)",
         "CREATE INDEX IF NOT EXISTS idx_locations_position_created_at ON locations(position, created_at)",
         "CREATE INDEX IF NOT EXISTS idx_machines_center_created_at ON machines(center_id, created_at DESC)",
@@ -489,10 +504,13 @@ def init_db():
         "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS emergency3_relation VARCHAR(20)",
         "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS assigned_user_id INTEGER REFERENCES users(id) ON DELETE SET NULL",
         "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT NOW()",
+        "CREATE TABLE IF NOT EXISTS inquiry_documents (id SERIAL PRIMARY KEY, inquiry_id INTEGER NOT NULL REFERENCES inquiries(id) ON DELETE CASCADE, document_type VARCHAR(40) NOT NULL, original_filename VARCHAR(255) NOT NULL, stored_filename VARCHAR(255) NOT NULL, file_path TEXT NOT NULL, mime_type VARCHAR(100), file_size INTEGER, created_at TIMESTAMP NOT NULL DEFAULT NOW())",
     ]:
         try:
             if _USE_SQLITE:
                 # sqlite has limited ALTER TABLE support; skip automatic migrations for sqlite
+                if "CREATE TABLE IF NOT EXISTS inquiry_documents" in sql:
+                    cur.execute(_normalize_sql_for_sqlite(sql))
                 continue
             cur.execute(sql); conn.commit()
         except Exception:

@@ -30,6 +30,9 @@ class Config:
     DB_POOL_MIN_CONN = int(os.getenv("DB_POOL_MIN_CONN", "1"))
     DB_POOL_MAX_CONN = int(os.getenv("DB_POOL_MAX_CONN", "5"))
     DB_ALLOW_SQLITE_FALLBACK = _as_bool(os.getenv("DB_ALLOW_SQLITE_FALLBACK"), default=False)
+    UPLOAD_FOLDER = os.getenv("UPLOAD_FOLDER", "uploads").strip() or "uploads"
+    MAX_CONTENT_LENGTH_MB = int(os.getenv("MAX_CONTENT_LENGTH_MB", "10"))
+    MAX_CONTENT_LENGTH = MAX_CONTENT_LENGTH_MB * 1024 * 1024
     WA_API_URL   = os.getenv("WA_API_URL", "")
     WA_API_TOKEN = os.getenv("WA_API_TOKEN", "")
     WA_PHONE_ID  = os.getenv("WA_PHONE_ID", "")

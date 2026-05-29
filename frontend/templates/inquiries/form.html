@@ -10,8 +10,13 @@
 {% set status_value = values.get('status', inquiry.status if inquiry else 'Open') %}
 {% set emergency2_visible = values.get('emergency2_name') or values.get('emergency2_mobile') or values.get('emergency2_relation') or (inquiry and (inquiry.emergency2_name or inquiry.emergency2_mobile or inquiry.emergency2_relation)) %}
 {% set emergency3_visible = values.get('emergency3_name') or values.get('emergency3_mobile') or values.get('emergency3_relation') or (inquiry and (inquiry.emergency3_name or inquiry.emergency3_mobile or inquiry.emergency3_relation)) %}
+{% set doc_groups = documents_by_type or {} %}
+{% set student_photo_docs = doc_groups.get('student_photo', []) %}
+{% set govt_id_front_docs = doc_groups.get('govt_id_front', []) %}
+{% set govt_id_back_docs = doc_groups.get('govt_id_back', []) %}
+{% set supporting_docs = doc_groups.get('supporting_document', []) %}
 <div class="form-card wide">
-  <form method="POST">
+  <form method="POST" enctype="multipart/form-data">
     {{ csrf_input() }}
 
     <!-- Personal Info -->
@@ -81,6 +86,104 @@
           <div id="pincode_error" class="field-error" style="color:#dc2626;margin-top:6px;font-size:.9rem;display:none"></div>
         </div>
       </div>
+    </div>
+
+    <!-- Student Documents -->
+    <div class="form-section">
+      <div class="form-section-title"><i class="fa-solid fa-id-card"></i> Student Photo & ID Documents</div>
+      <div class="upload-note">Upload photos or PDFs. You can browse from your device, documents, or use your camera on mobile.</div>
+      <div class="upload-grid">
+        <label class="upload-card">
+          <input type="file" name="student_photo" accept="image/*,application/pdf" data-preview-input="student_photo"/>
+          <div class="upload-card-head">
+            <div class="upload-icon"><i class="fa-regular fa-image"></i></div>
+            <div class="upload-meta">
+              <strong>Student Photo</strong>
+              <span>Photo or PDF, max 10 MB</span>
+            </div>
+          </div>
+          <div class="upload-action"><i class="fa-solid fa-arrow-up-from-bracket"></i> Choose file</div>
+        </label>
+
+        <label class="upload-card">
+          <input type="file" name="govt_id_front" accept="image/*,application/pdf" data-preview-input="govt_id_front"/>
+          <div class="upload-card-head">
+            <div class="upload-icon"><i class="fa-solid fa-id-card"></i></div>
+            <div class="upload-meta">
+              <strong>Government ID Front</strong>
+              <span>Photo or PDF, max 10 MB</span>
+            </div>
+          </div>
+          <div class="upload-action"><i class="fa-solid fa-arrow-up-from-bracket"></i> Choose file</div>
+        </label>
+
+        <label class="upload-card">
+          <input type="file" name="govt_id_back" accept="image/*,application/pdf" data-preview-input="govt_id_back"/>
+          <div class="upload-card-head">
+            <div class="upload-icon"><i class="fa-solid fa-id-card-clip"></i></div>
+            <div class="upload-meta">
+              <strong>Government ID Back</strong>
+              <span>Photo or PDF, max 10 MB</span>
+            </div>
+          </div>
+          <div class="upload-action"><i class="fa-solid fa-arrow-up-from-bracket"></i> Choose file</div>
+        </label>
+
+        <label class="upload-card">
+          <input type="file" name="supporting_documents" accept="image/*,application/pdf" multiple data-preview-input="supporting_documents"/>
+          <div class="upload-card-head">
+            <div class="upload-icon"><i class="fa-solid fa-folder-open"></i></div>
+            <div class="upload-meta">
+              <strong>Supporting Documents</strong>
+              <span>One or more photos/PDFs</span>
+            </div>
+          </div>
+          <div class="upload-action"><i class="fa-solid fa-arrow-up-from-bracket"></i> Choose files</div>
+        </label>
+      </div>
+
+      <div class="upload-preview-grid" data-preview-area>
+        <div class="upload-preview-empty">Selected files will appear here before you save.</div>
+      </div>
+
+      {% if inquiry and (student_photo_docs or govt_id_front_docs or govt_id_back_docs or supporting_docs) %}
+      <div class="existing-documents">
+        {% for doc_type, docs in [('student_photo', student_photo_docs), ('govt_id_front', govt_id_front_docs), ('govt_id_back', govt_id_back_docs), ('supporting_document', supporting_docs)] %}
+        {% if docs %}
+        <div class="doc-group">
+          <div class="section-title" style="margin-bottom:10px">{{ document_type_labels.get(doc_type, doc_type) }}</div>
+          <div class="doc-grid">
+            {% for document in docs %}
+            <div class="doc-card">
+              <div class="doc-thumb">
+                {% if document.mime_type and document.mime_type[:6] == 'image/' %}
+                <img src="{{ url_for('inquiries.document_file', iid=inquiry.id, doc_id=document.id) }}" alt="{{ document.original_filename }}"/>
+                {% else %}
+                <div class="doc-file-icon"><i class="fa-regular fa-file-pdf"></i><span>PDF</span></div>
+                {% endif %}
+              </div>
+              <div class="doc-body">
+                <div class="doc-name">{{ document.original_filename }}</div>
+                <div class="doc-meta">{{ document.mime_type or 'Unknown type' }}{% if document.file_size %} · {{ '%.1f'|format(document.file_size / 1024 / 1024) }} MB{% endif %}</div>
+                <div class="doc-actions">
+                  <a href="{{ url_for('inquiries.document_file', iid=inquiry.id, doc_id=document.id) }}" target="_blank" class="btn btn-outline btn-xs"><i class="fa-regular fa-eye"></i> Preview</a>
+                  <a href="{{ url_for('inquiries.document_file', iid=inquiry.id, doc_id=document.id) }}?download=1" class="btn btn-primary btn-xs"><i class="fa-solid fa-download"></i> Download</a>
+                  {% if session.role in ['admin','developer','teacher'] %}
+                  <form method="POST" action="{{ url_for('inquiries.delete_document', iid=inquiry.id, doc_id=document.id) }}" onsubmit="return confirm('Delete this document?')">
+                    {{ csrf_input() }}
+                    <button type="submit" class="btn btn-red btn-xs"><i class="fa-solid fa-trash"></i> Delete</button>
+                  </form>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
     </div>
 
     <!-- Emergency Contacts -->
@@ -322,4 +425,75 @@
     </div>
   </form>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const previewArea = document.querySelector('[data-preview-area]');
+  const inputs = Array.from(document.querySelectorAll('[data-preview-input]'));
+  if (!previewArea || !inputs.length) return;
+
+  const formatSize = (bytes) => {
+    if (!bytes) return '';
+    const mb = bytes / (1024 * 1024);
+    return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  };
+
+  const fileToDataUrl = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+
+  const buildCard = async (file, label) => {
+    const isImage = file.type && file.type.startsWith('image/');
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const safeName = file.name.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const sizeText = formatSize(file.size);
+    if (isImage) {
+      const url = await fileToDataUrl(file);
+      return `
+        <div class="upload-preview-item">
+          <img src="${url}" alt="${safeName}"/>
+          <div class="upload-preview-body">
+            <div class="upload-preview-name">${label}</div>
+            <div class="upload-preview-meta">${safeName}${sizeText ? ` · ${sizeText}` : ''}</div>
+          </div>
+        </div>`;
+    }
+    const icon = isPdf ? 'fa-file-pdf' : 'fa-file';
+    return `
+      <div class="upload-preview-item">
+        <div class="upload-preview-file"><i class="fa-regular ${icon}"></i><span>${isPdf ? 'PDF' : 'File'}</span></div>
+        <div class="upload-preview-body">
+          <div class="upload-preview-name">${label}</div>
+          <div class="upload-preview-meta">${safeName}${sizeText ? ` · ${sizeText}` : ''}</div>
+        </div>
+      </div>`;
+  };
+
+  const render = async () => {
+    const cards = [];
+    for (const input of inputs) {
+      const files = Array.from(input.files || []);
+      if (!files.length) continue;
+      const label = input.name === 'supporting_documents'
+        ? 'Supporting Document'
+        : input.name === 'student_photo'
+          ? 'Student Photo'
+          : input.name === 'govt_id_front'
+            ? 'Government ID Front'
+            : 'Government ID Back';
+      for (const file of files) {
+        cards.push(await buildCard(file, label));
+      }
+    }
+    previewArea.innerHTML = cards.length ? cards.join('') : '<div class="upload-preview-empty">Selected files will appear here before you save.</div>';
+  };
+
+  inputs.forEach((input) => input.addEventListener('change', render));
+  render();
+});
+</script>
 {% endblock %}

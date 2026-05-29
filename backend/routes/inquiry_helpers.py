@@ -19,6 +19,13 @@ INQUIRY_SORT_COLUMNS = {
     "i.followup_date",
 }
 
+DOCUMENT_TYPE_LABELS = {
+    "student_photo": "Student Photo",
+    "govt_id_front": "Government ID Front",
+    "govt_id_back": "Government ID Back",
+    "supporting_document": "Supporting Document",
+}
+
 
 def build_inquiry_scope(role, loc_id):
     base = (
@@ -163,6 +170,21 @@ def fetch_inquiry(cur, iid, role, loc_id, with_joins=False):
     return cur.fetchone()
 
 
+def load_inquiry_documents(cur, iid):
+    cur.execute(
+        "SELECT * FROM inquiry_documents WHERE inquiry_id=%s ORDER BY created_at ASC, id ASC;",
+        (iid,),
+    )
+    return cur.fetchall()
+
+
+def group_inquiry_documents(documents):
+    grouped = {key: [] for key in DOCUMENT_TYPE_LABELS}
+    for document in documents or []:
+        grouped.setdefault(document.get("document_type"), []).append(document)
+    return grouped
+
+
 def normalize_mobile(value):
     digits = "".join(ch for ch in (value or "") if ch.isdigit())
     if len(digits) == 12 and digits.startswith("91"):
@@ -176,7 +198,7 @@ def normalize_optional_mobile(value, field_name):
     return clean_optional_text(value, field_name, max_length=20)
 
 
-def render_inquiry_form(*, inquiry, locations, courses, offers, defaults, action, form_data=None, form_error_popup=None):
+def render_inquiry_form(*, inquiry, locations, courses, offers, defaults, action, form_data=None, form_error_popup=None, documents_by_type=None):
     return render_template(
         "inquiries/form.html",
         inquiry=inquiry,
@@ -187,6 +209,8 @@ def render_inquiry_form(*, inquiry, locations, courses, offers, defaults, action
         action=action,
         form_data=form_data or {},
         form_error_popup=form_error_popup,
+        documents_by_type=documents_by_type or {},
+        document_type_labels=DOCUMENT_TYPE_LABELS,
     )
 
 

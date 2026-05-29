@@ -21,6 +21,8 @@ window.fetch = (input, init = {}) => {
   return originalFetch(input, {...init, headers});
 };
 
+window.__HeavyLiftNotifHandlers = true;
+
 let notifSocket = null;
 let notifPollingTimer = null;
 let latestNotifState = {count: 0, notifications: []};

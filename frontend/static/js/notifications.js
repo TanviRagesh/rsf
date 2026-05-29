@@ -24,6 +24,9 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    if (window.__HeavyLiftNotifHandlers) {
+      return;
+    }
     const bell = document.getElementById('notifBtn');
     const dropdown = document.getElementById('notifDropdown');
     const countEl = document.getElementById('notifCount');

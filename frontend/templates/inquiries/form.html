@@ -12,8 +12,7 @@
 {% set emergency3_visible = values.get('emergency3_name') or values.get('emergency3_mobile') or values.get('emergency3_relation') or (inquiry and (inquiry.emergency3_name or inquiry.emergency3_mobile or inquiry.emergency3_relation)) %}
 {% set doc_groups = documents_by_type or {} %}
 {% set student_photo_docs = doc_groups.get('student_photo', []) %}
-{% set govt_id_front_docs = doc_groups.get('govt_id_front', []) %}
-{% set govt_id_back_docs = doc_groups.get('govt_id_back', []) %}
+{% set govt_id_docs = doc_groups.get('govt_id', []) %}
 {% set supporting_docs = doc_groups.get('supporting_document', []) %}
 <div class="form-card wide">
   <form method="POST" enctype="multipart/form-data">
@@ -106,23 +105,11 @@
         </label>
 
         <label class="upload-card">
-          <input type="file" name="govt_id_front" accept="image/*,application/pdf" data-preview-input="govt_id_front"/>
+          <input type="file" name="govt_id" accept="image/*,application/pdf" data-preview-input="govt_id"/>
           <div class="upload-card-head">
             <div class="upload-icon"><i class="fa-solid fa-id-card"></i></div>
             <div class="upload-meta">
-              <strong>Government ID Front</strong>
-              <span>Photo or PDF, max 10 MB</span>
-            </div>
-          </div>
-          <div class="upload-action"><i class="fa-solid fa-arrow-up-from-bracket"></i> Choose file</div>
-        </label>
-
-        <label class="upload-card">
-          <input type="file" name="govt_id_back" accept="image/*,application/pdf" data-preview-input="govt_id_back"/>
-          <div class="upload-card-head">
-            <div class="upload-icon"><i class="fa-solid fa-id-card-clip"></i></div>
-            <div class="upload-meta">
-              <strong>Government ID Back</strong>
+              <strong>Government ID</strong>
               <span>Photo or PDF, max 10 MB</span>
             </div>
           </div>
@@ -146,9 +133,9 @@
         <div class="upload-preview-empty">Selected files will appear here before you save.</div>
       </div>
 
-      {% if inquiry and (student_photo_docs or govt_id_front_docs or govt_id_back_docs or supporting_docs) %}
+      {% if inquiry and (student_photo_docs or govt_id_docs or supporting_docs) %}
       <div class="existing-documents">
-        {% for doc_type, docs in [('student_photo', student_photo_docs), ('govt_id_front', govt_id_front_docs), ('govt_id_back', govt_id_back_docs), ('supporting_document', supporting_docs)] %}
+        {% for doc_type, docs in [('student_photo', student_photo_docs), ('govt_id', govt_id_docs), ('supporting_document', supporting_docs)] %}
         {% if docs %}
         <div class="doc-group">
           <div class="section-title" style="margin-bottom:10px">{{ document_type_labels.get(doc_type, doc_type) }}</div>
@@ -482,9 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ? 'Supporting Document'
         : input.name === 'student_photo'
           ? 'Student Photo'
-          : input.name === 'govt_id_front'
-            ? 'Government ID Front'
-            : 'Government ID Back';
+          : 'Government ID';
       for (const file of files) {
         cards.push(await buildCard(file, label));
       }

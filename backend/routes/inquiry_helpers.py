@@ -21,8 +21,7 @@ INQUIRY_SORT_COLUMNS = {
 
 DOCUMENT_TYPE_LABELS = {
     "student_photo": "Student Photo",
-    "govt_id_front": "Government ID Front",
-    "govt_id_back": "Government ID Back",
+    "govt_id": "Government ID",
     "supporting_document": "Supporting Document",
 }
 
@@ -181,7 +180,10 @@ def load_inquiry_documents(cur, iid):
 def group_inquiry_documents(documents):
     grouped = {key: [] for key in DOCUMENT_TYPE_LABELS}
     for document in documents or []:
-        grouped.setdefault(document.get("document_type"), []).append(document)
+        document_type = document.get("document_type")
+        if document_type in {"govt_id_front", "govt_id_back"}:
+            document_type = "govt_id"
+        grouped.setdefault(document_type, []).append(document)
     return grouped
 
 

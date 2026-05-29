@@ -39,7 +39,8 @@ inquiries_bp = Blueprint("inquiries", __name__, url_prefix="/inquiries")
 
 ALLOWED_UPLOAD_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".gif", ".pdf"}
 PHOTO_DOCUMENT_TYPES = {"student_photo"}
-SINGLE_DOCUMENT_TYPES = {"student_photo", "govt_id_front", "govt_id_back"}
+SINGLE_DOCUMENT_TYPES = {"student_photo", "govt_id"}
+LEGACY_GOVT_ID_TYPES = {"govt_id", "govt_id_front", "govt_id_back"}
 
 
 def _uploads_root():
@@ -73,8 +74,7 @@ def _collect_inquiry_uploads(files):
     uploads = []
     single_types = {
         "student_photo": files.get("student_photo"),
-        "govt_id_front": files.get("govt_id_front"),
-        "govt_id_back": files.get("govt_id_back"),
+        "govt_id": files.get("govt_id"),
     }
     for document_type, upload in single_types.items():
         if upload and upload.filename:
@@ -116,7 +116,10 @@ def _load_document_rows(cur, iid):
 def _split_document_groups(documents):
     grouped = {key: [] for key in DOCUMENT_TYPE_LABELS}
     for document in documents or []:
-        grouped.setdefault(document["document_type"], []).append(document)
+        document_type = document["document_type"]
+        if document_type in {"govt_id_front", "govt_id_back"}:
+            document_type = "govt_id"
+        grouped.setdefault(document_type, []).append(document)
     return grouped
 
 
@@ -129,9 +132,13 @@ def _remove_document_file(file_path):
 
 
 def _replace_single_document(cur, iid, document_type):
+    document_types = [document_type]
+    if document_type == "govt_id":
+        document_types = list(LEGACY_GOVT_ID_TYPES)
+    placeholders = ",".join(["%s"] * len(document_types))
     cur.execute(
-        "SELECT id, file_path FROM inquiry_documents WHERE inquiry_id=%s AND document_type=%s ORDER BY created_at DESC, id DESC;",
-        (iid, document_type),
+        f"SELECT id, file_path FROM inquiry_documents WHERE inquiry_id=%s AND document_type IN ({placeholders}) ORDER BY created_at DESC, id DESC;",
+        [iid, *document_types],
     )
     return cur.fetchall()
 

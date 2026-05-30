@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Franchise — HeavyLift CRM{% endblock %}
+{% block page_title %}Franchise: {{ franchise.name }}{% endblock %}
+{% block content %}
+<div class="section-card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div>
+      <h3>{{ franchise.name }} <small style="color:var(--muted)">({{ franchise.code }})</small></h3>
+      <div style="color:var(--muted)">{{ franchise.phone or '—' }} • {{ franchise.address or '—' }}</div>
+    </div>
+    <div>
+      <a href="{{ url_for('franchises.edit', fr_id=franchise.id) }}" class="btn btn-outline">Edit</a>
+      <a href="{{ url_for('franchises.index') }}" class="btn btn-outline">Back</a>
+    </div>
+  </div>
+
+  <h4>Sales Executives</h4>
+  {% if session.role in ['admin','developer'] %}<a href="{{ url_for('franchises.add_sales_exec', fr_id=franchise.id) }}" class="btn btn-primary btn-sm" style="margin-bottom:8px"><i class="fa-solid fa-plus"></i> Add Sales Executive</a>{% endif %}
+  {% if sales_execs %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Email</th><th>Address</th>{% if session.role in ['admin','developer'] %}<th>Actions</th>{% endif %}</tr></thead>
+      <tbody>
+        {% for se in sales_execs %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ se.name }}</td>
+          <td>{{ se.phone or '—' }}</td>
+          <td>{{ se.email or '—' }}</td>
+          <td class="desc-cell">{{ se.address or '—' }}</td>
+          {% if session.role in ['admin','developer'] %}
+          <td>
+            <a href="{{ url_for('franchises.edit_sales_exec', fr_id=franchise.id, se_id=se.id) }}" class="action-btn btn-edit" title="Edit"><i class="fa-solid fa-pen"></i></a>
+            <form method="POST" action="{{ url_for('franchises.delete_sales_exec', fr_id=franchise.id, se_id=se.id) }}" style="display:inline" onsubmit="return confirm('Delete?')">
+              {{ csrf_input() }}
+              <button type="submit" class="action-btn btn-delete" title="Delete"><i class="fa-solid fa-trash"></i></button>
+            </form>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><i class="fa-solid fa-user-tie"></i>
+    <p>No sales executives recorded.</p>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

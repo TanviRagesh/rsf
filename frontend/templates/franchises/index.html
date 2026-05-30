@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Franchises — HeavyLift CRM{% endblock %}
+{% block page_title %}Franchises{% endblock %}
+{% block content %}
+<div class="section-card">
+  <div class="toolbar">
+    <form class="search-form" method="GET">
+      <div class="search-wrap">
+        <div class="input-wrap"><i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" name="q" value="{{ search }}" placeholder="Search franchises…"/>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Search</button>
+        {% if search %}<a href="{{ url_for('franchises.index') }}" class="btn btn-outline btn-sm">Clear</a>{% endif %}
+      </div>
+    </form>
+    {% if session.role in ['admin','developer'] %}
+    <a href="{{ url_for('franchises.add') }}" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Add Franchise</a>
+    {% endif %}
+  </div>
+
+  {% if franchises %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th>#</th><th>Code</th><th>Name</th><th>Phone</th><th>Address</th>
+        {% if session.role in ['admin','developer'] %}<th>Actions</th>{% endif %}
+      </tr></thead>
+      <tbody>
+        {% for fr in franchises %}
+        <tr class="clickable-row" data-href="{{ url_for('franchises.detail', fr_id=fr.id) }}">
+          <td>{{ loop.index }}</td>
+          <td><strong>{{ fr.code }}</strong></td>
+          <td>{{ fr.name }}</td>
+          <td>{{ fr.phone or '—' }}</td>
+          <td class="desc-cell">{{ fr.address or '—' }}</td>
+          {% if session.role in ['admin','developer'] %}
+          <td onclick="event.stopPropagation()">
+            <div class="action-cell">
+              <a href="{{ url_for('franchises.detail', fr_id=fr.id) }}" class="action-btn btn-analytics" title="View"><i class="fa-solid fa-eye"></i></a>
+              <a href="{{ url_for('franchises.edit', fr_id=fr.id) }}" class="action-btn btn-edit" title="Edit"><i class="fa-solid fa-pen"></i></a>
+              <form method="POST" action="{{ url_for('franchises.delete', fr_id=fr.id) }}" style="display:inline" onsubmit="return confirm('Delete?')">
+                {{ csrf_input() }}
+                <button type="submit" class="action-btn btn-delete" title="Delete"><i class="fa-solid fa-trash"></i></button>
+              </form>
+            </div>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><i class="fa-solid fa-building"></i>
+    <p>No franchises found. {% if session.role in ['admin','developer'] %}<a href="{{ url_for('franchises.add') }}">Add one →</a>{% endif %}</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

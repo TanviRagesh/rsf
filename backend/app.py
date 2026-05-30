@@ -42,6 +42,8 @@ from .routes.followup_list import followup_bp
 from .routes.inquiries import inquiries_bp
 from .routes.locations import locations_bp
 from .routes.machines import machines_bp
+from .routes.franchises import franchises_bp
+from .routes.channel_partners import cp_bp
 from .webservices.notifications import notif_bp, socketio
 from .webservices.offers import offers_bp
 from .routes.reports import reports_bp
@@ -61,6 +63,8 @@ app.register_blueprint(api_bp)
 app.register_blueprint(users_bp)
 app.register_blueprint(locations_bp)
 app.register_blueprint(machines_bp)
+app.register_blueprint(franchises_bp)
+app.register_blueprint(cp_bp)
 app.register_blueprint(courses_bp)
 app.register_blueprint(inquiries_bp)
 app.register_blueprint(followup_bp)

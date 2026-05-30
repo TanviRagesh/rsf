@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Channel Partners — HeavyLift CRM{% endblock %}
+{% block page_title %}Channel Partners{% endblock %}
+{% block content %}
+<div class="section-card">
+  <div class="toolbar">
+    <form class="search-form" method="GET">
+      <div class="search-wrap">
+        <div class="input-wrap"><i class="fa-solid fa-magnifying-glass"></i>
+          <input type="text" name="q" value="{{ search }}" placeholder="Search channel partners…"/>
+        </div>
+        <button type="submit" class="btn btn-primary btn-sm">Search</button>
+        {% if search %}<a href="{{ url_for('channel_partners.index') }}" class="btn btn-outline btn-sm">Clear</a>{% endif %}
+      </div>
+    </form>
+    {% if session.role in ['admin','developer'] %}
+    <a href="{{ url_for('channel_partners.add') }}" class="btn btn-primary btn-sm"><i class="fa-solid fa-plus"></i> Add Channel Partner</a>
+    {% endif %}
+  </div>
+
+  {% if partners %}
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th>#</th><th>Name</th><th>Phone</th><th>Email</th><th>Trainer</th><th>Trainer Location</th>
+        {% if session.role in ['admin','developer'] %}<th>Actions</th>{% endif %}
+      </tr></thead>
+      <tbody>
+        {% for p in partners %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ p.name }}</td>
+          <td>{{ p.phone or '—' }}</td>
+          <td>{{ p.email or '—' }}</td>
+          <td>{{ p.trainer_name or '—' }}</td>
+          <td>{{ p.trainer_location_name or '—' }}</td>
+          {% if session.role in ['admin','developer'] %}
+          <td>
+            <a href="{{ url_for('channel_partners.edit', cp_id=p.id) }}" class="action-btn btn-edit" title="Edit"><i class="fa-solid fa-pen"></i></a>
+            <form method="POST" action="{{ url_for('channel_partners.delete', cp_id=p.id) }}" style="display:inline" onsubmit="return confirm('Delete?')">
+              {{ csrf_input() }}
+              <button type="submit" class="action-btn btn-delete" title="Delete"><i class="fa-solid fa-trash"></i></button>
+            </form>
+          </td>
+          {% endif %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty-state"><i class="fa-solid fa-handshake"></i>
+    <p>No channel partners found. {% if session.role in ['admin','developer'] %}<a href="{{ url_for('channel_partners.add') }}">Add one →</a>{% endif %}</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

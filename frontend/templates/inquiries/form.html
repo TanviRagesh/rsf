@@ -8,6 +8,11 @@
 {% set course_value = values.get('course_id', inquiry.course_id if inquiry else '') | string %}
 {% set offer_value = values.get('offer_id', inquiry.offer_id if inquiry else '') | string %}
 {% set status_value = values.get('status', inquiry.status if inquiry else 'Open') %}
+{% set ref1_type_value = values.get('ref1_type', inquiry.ref1_type if inquiry else '') %}
+{% set ref1_payment_method_value = values.get('ref1_payment_method', inquiry.ref1_payment_method if inquiry else '') %}
+{% set ref1_channel_partner_id_value = values.get('ref1_channel_partner_id', inquiry.ref1_channel_partner_id if inquiry else '') | string %}
+{% set ref1_franchise_id_value = values.get('ref1_franchise_id', inquiry.ref1_franchise_id if inquiry else '') | string %}
+{% set ref1_sales_exec_id_value = values.get('ref1_sales_exec_id', inquiry.ref1_sales_exec_id if inquiry else '') | string %}
 {% set emergency2_visible = values.get('emergency2_name') or values.get('emergency2_mobile') or values.get('emergency2_relation') or (inquiry and (inquiry.emergency2_name or inquiry.emergency2_mobile or inquiry.emergency2_relation)) %}
 {% set emergency3_visible = values.get('emergency3_name') or values.get('emergency3_mobile') or values.get('emergency3_relation') or (inquiry and (inquiry.emergency3_name or inquiry.emergency3_mobile or inquiry.emergency3_relation)) %}
 {% set doc_groups = documents_by_type or {} %}
@@ -431,36 +436,142 @@
         <span style="font-size:.75rem;font-weight:400;color:var(--muted);text-transform:none;letter-spacing:0">(optional)</span>
       </div>
 
-      <!-- Ref 1 always visible -->
-      <div class="form-row-4" id="ref1">
-        <div class="form-group">
-          <label>Type Of Ref</label>
-          <div class="input-wrap"><i class="fa-solid fa-layer-group"></i>
-            <select name="ref1_type">
-              <option value="">— Select —</option>
-              <option value="Channel Partner" {% if values.get('ref1_type', inquiry.ref1_type if inquiry else '') == 'Channel Partner' %}selected{% endif %}>Channel Partner</option>
-              <option value="Student" {% if values.get('ref1_type', inquiry.ref1_type if inquiry else '') == 'Student' %}selected{% endif %}>Student</option>
-              <option value="Outsider" {% if values.get('ref1_type', inquiry.ref1_type if inquiry else '') == 'Outsider' %}selected{% endif %}>Outsider</option>
-            </select>
+      <input type="hidden" name="ref1_channel_partner_id" id="ref1_channel_partner_id" value="{{ ref1_channel_partner_id_value }}"/>
+      <input type="hidden" name="ref1_franchise_id" id="ref1_franchise_id" value="{{ ref1_franchise_id_value }}"/>
+      <input type="hidden" name="ref1_sales_exec_id" id="ref1_sales_exec_id" value="{{ ref1_sales_exec_id_value }}"/>
+
+      <div class="form-group" style="margin-bottom:12px">
+        <label>Type Of Ref</label>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px">
+          <label><input type="radio" name="ref1_type" value="Channel Partner" {% if ref1_type_value == 'Channel Partner' %}checked{% endif %}/> Channel Partner</label>
+          <label><input type="radio" name="ref1_type" value="Franchise" {% if ref1_type_value == 'Franchise' %}checked{% endif %}/> Franchise</label>
+          <label><input type="radio" name="ref1_type" value="Student" {% if ref1_type_value == 'Student' %}checked{% endif %}/> Student</label>
+          <label><input type="radio" name="ref1_type" value="Other" {% if ref1_type_value in ['Other', 'Outsider'] %}checked{% endif %}/> Others</label>
+        </div>
+      </div>
+
+      <div id="ref1ChannelPartnerFields" style="display:none">
+        <div class="form-row-3">
+          <div class="form-group">
+            <label>Channel Partner</label>
+            <div class="input-wrap"><i class="fa-solid fa-handshake"></i>
+              <div class="combo" data-combo="ref1-channel-partner">
+                <input type="text" id="ref1_channel_partner_search" class="combo-input" placeholder="Search channel partner..." autocomplete="off"/>
+                <button type="button" class="combo-toggle" aria-label="Toggle channel partner list">
+                  <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="combo-list" id="ref1_channel_partner_list"></div>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Ref Name</label>
+            <div class="input-wrap"><i class="fa-solid fa-user-tag"></i>
+              <input type="text" name="ref1_name" id="ref1_name" placeholder="Reference name" value="{{ values.get('ref1_name', inquiry.ref1_name if inquiry else '') }}"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Ref Mobile</label>
+            <div class="input-wrap"><i class="fa-solid fa-phone"></i>
+              <input type="text" name="ref1_mobile" id="ref1_mobile" placeholder="Mobile" value="{{ values.get('ref1_mobile', inquiry.ref1_mobile if inquiry else '') }}"/>
+            </div>
           </div>
         </div>
-        <div class="form-group">
-          <label>Ref Name</label>
-          <div class="input-wrap"><i class="fa-solid fa-user-tag"></i>
-            <input type="text" name="ref1_name" placeholder="Reference name" value="{{ values.get('ref1_name', inquiry.ref1_name if inquiry else '') }}"/>
+      </div>
+
+      <div id="ref1FranchiseFields" style="display:none">
+        <div class="form-row-3">
+          <div class="form-group">
+            <label>Franchise</label>
+            <div class="input-wrap"><i class="fa-solid fa-building"></i>
+              <div class="combo" data-combo="ref1-franchise">
+                <input type="text" id="ref1_franchise_search" class="combo-input" placeholder="Search franchise by name/code..." autocomplete="off"/>
+                <button type="button" class="combo-toggle" aria-label="Toggle franchise list">
+                  <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="combo-list" id="ref1_franchise_list"></div>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Sales Executive</label>
+            <div class="input-wrap"><i class="fa-solid fa-user-tie"></i>
+              <div class="combo" data-combo="ref1-sales-exec">
+                <input type="text" id="ref1_sales_exec_search" class="combo-input" placeholder="Select sales executive..." autocomplete="off"/>
+                <button type="button" class="combo-toggle" aria-label="Toggle sales executive list">
+                  <i class="fa-solid fa-chevron-down"></i>
+                </button>
+                <div class="combo-list" id="ref1_sales_exec_list"></div>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Ref Mobile</label>
+            <div class="input-wrap"><i class="fa-solid fa-phone"></i>
+              <input type="text" name="ref1_mobile" id="ref1_franchise_mobile" placeholder="Mobile" value="{{ values.get('ref1_mobile', inquiry.ref1_mobile if inquiry else '') }}"/>
+            </div>
           </div>
         </div>
-        <div class="form-group">
-          <label>Ref Mobile</label>
-          <div class="input-wrap"><i class="fa-solid fa-phone"></i>
-            <input type="text" name="ref1_mobile" placeholder="Mobile" value="{{ values.get('ref1_mobile', inquiry.ref1_mobile if inquiry else '') }}"/>
+        <div class="form-row-3">
+          <div class="form-group">
+            <label>Ref Name</label>
+            <div class="input-wrap"><i class="fa-solid fa-user-tag"></i>
+              <input type="text" name="ref1_name" id="ref1_franchise_name" placeholder="Reference name" value="{{ values.get('ref1_name', inquiry.ref1_name if inquiry else '') }}"/>
+            </div>
           </div>
         </div>
+      </div>
+
+      <div id="ref1StudentFields" style="display:none">
+        <div class="form-row-3">
+          <div class="form-group">
+            <label>Ref Name</label>
+            <div class="input-wrap"><i class="fa-solid fa-user-tag"></i>
+              <input type="text" name="ref1_name" id="ref1_student_name" placeholder="Student name" value="{{ values.get('ref1_name', inquiry.ref1_name if inquiry else '') }}"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Ref Mobile</label>
+            <div class="input-wrap"><i class="fa-solid fa-phone"></i>
+              <input type="text" name="ref1_mobile" id="ref1_student_mobile" placeholder="Mobile" value="{{ values.get('ref1_mobile', inquiry.ref1_mobile if inquiry else '') }}"/>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="ref1OtherFields" style="display:none">
+        <div class="form-row-3">
+          <div class="form-group">
+            <label>Source Name</label>
+            <div class="input-wrap"><i class="fa-solid fa-user-tag"></i>
+              <input type="text" name="ref1_name" id="ref1_other_name" placeholder="Source name" value="{{ values.get('ref1_name', inquiry.ref1_name if inquiry else '') }}"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Source Mobile</label>
+            <div class="input-wrap"><i class="fa-solid fa-phone"></i>
+              <input type="text" name="ref1_mobile" id="ref1_other_mobile" placeholder="Mobile" value="{{ values.get('ref1_mobile', inquiry.ref1_mobile if inquiry else '') }}"/>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-row-3">
         <div class="form-group">
           <label>Amount Paid</label>
           <div class="input-wrap"><i class="fa-solid fa-indian-rupee-sign"></i>
             <input type="number" name="ref1_amount_paid" placeholder="Amount paid" min="0" step="any"
                    value="{{ values.get('ref1_amount_paid', inquiry.ref1_amount_paid if inquiry else '') }}"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Amount Paid Method</label>
+          <div class="input-wrap"><i class="fa-solid fa-wallet"></i>
+            <select name="ref1_payment_method">
+              <option value="">— Select —</option>
+              <option value="cash" {% if ref1_payment_method_value == 'cash' %}selected{% endif %}>Cash</option>
+              <option value="upi" {% if ref1_payment_method_value == 'upi' %}selected{% endif %}>UPI</option>
+            </select>
           </div>
         </div>
       </div>
@@ -476,6 +587,178 @@
 {% block scripts %}
 <script>
 document.addEventListener('DOMContentLoaded', () => {
+  const channelPartners = {{ (channel_partners or []) | tojson }};
+  const franchises = {{ (franchises or []) | tojson }};
+  const salesExecs = {{ (sales_execs or []) | tojson }};
+
+  const typeRadios = document.querySelectorAll('input[name="ref1_type"]');
+  const cpBlock = document.getElementById('ref1ChannelPartnerFields');
+  const frBlock = document.getElementById('ref1FranchiseFields');
+  const stBlock = document.getElementById('ref1StudentFields');
+  const otBlock = document.getElementById('ref1OtherFields');
+  const cpSearch = document.getElementById('ref1_channel_partner_search');
+  const cpList = document.getElementById('ref1_channel_partner_list');
+  const cpIdField = document.getElementById('ref1_channel_partner_id');
+  const frSearch = document.getElementById('ref1_franchise_search');
+  const frList = document.getElementById('ref1_franchise_list');
+  const frIdField = document.getElementById('ref1_franchise_id');
+  const seSearch = document.getElementById('ref1_sales_exec_search');
+  const seList = document.getElementById('ref1_sales_exec_list');
+  const seIdField = document.getElementById('ref1_sales_exec_id');
+
+  const blocks = {
+    'Channel Partner': cpBlock,
+    'Franchise': frBlock,
+    'Student': stBlock,
+    'Other': otBlock,
+  };
+
+  const setBlockEnabled = (block, enabled) => {
+    if (!block) return;
+    block.querySelectorAll('input, select, textarea').forEach((el) => {
+      if (el.id === 'ref1_channel_partner_search' || el.id === 'ref1_franchise_search' || el.id === 'ref1_sales_exec_search') {
+        return;
+      }
+      el.disabled = !enabled;
+    });
+  };
+
+  const hideAll = () => Object.values(blocks).forEach((el) => { if (el) el.style.display = 'none'; });
+  const activeType = () => (Array.from(typeRadios).find((r) => r.checked)?.value || '');
+  const syncType = () => {
+    const t = activeType() === 'Outsider' ? 'Other' : activeType();
+    hideAll();
+    if (blocks[t]) blocks[t].style.display = 'block';
+    Object.entries(blocks).forEach(([key, el]) => setBlockEnabled(el, key === t));
+    if (t !== 'Channel Partner') cpIdField.value = '';
+    if (t !== 'Franchise') {
+      frIdField.value = '';
+      seIdField.value = '';
+    }
+  };
+
+  const cpLabel = (cp) => `${cp.name || ''} (${cp.phone || 'no-phone'})`;
+  const frLabel = (fr) => `${fr.code || ''} - ${fr.name || ''}`;
+  const seLabel = (se) => `${se.name || ''} (${se.phone || 'no-phone'})`;
+
+  const renderComboList = (listEl, items) => {
+    if (!listEl) return;
+    if (!items.length) {
+      listEl.innerHTML = '<div class="combo-empty">No matches</div>';
+      return;
+    }
+    listEl.innerHTML = items.map((item) => `<div class="combo-item" data-value="${item}">${item}</div>`).join('');
+  };
+
+  const filterItems = (items, query) => {
+    const q = String(query || '').trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((item) => item.toLowerCase().includes(q));
+  };
+
+  const setupCombo = (inputEl, listEl, itemsProvider, onPick) => {
+    if (!inputEl || !listEl) return;
+    const refresh = () => {
+      renderComboList(listEl, filterItems(itemsProvider(), inputEl.value));
+    };
+
+    inputEl.addEventListener('focus', () => {
+      refresh();
+      listEl.classList.add('open');
+    });
+    inputEl.addEventListener('input', () => {
+      refresh();
+      listEl.classList.add('open');
+    });
+
+    listEl.addEventListener('click', (event) => {
+      const item = event.target.closest('.combo-item');
+      if (!item) return;
+      inputEl.value = item.dataset.value || '';
+      listEl.classList.remove('open');
+      onPick?.(inputEl.value);
+    });
+
+    inputEl.closest('.combo')?.querySelector('.combo-toggle')?.addEventListener('click', (event) => {
+      event.preventDefault();
+      refresh();
+      listEl.classList.toggle('open');
+    });
+
+    document.addEventListener('click', (event) => {
+      const wrapper = inputEl.closest('.combo');
+      if (!wrapper || wrapper.contains(event.target)) return;
+      listEl.classList.remove('open');
+    });
+  };
+
+  const syncSalesExecOptions = () => {
+    const frId = Number(frIdField.value || 0);
+    const filtered = salesExecs.filter((se) => Number(se.franchise_id || 0) === frId);
+    renderComboList(seList, filtered.map((se) => seLabel(se)));
+  };
+
+  const pickChannelPartner = (label) => {
+    const picked = channelPartners.find((cp) => cpLabel(cp) === label);
+    if (!picked) return;
+    cpIdField.value = String(picked.id || '');
+    const nameField = document.getElementById('ref1_name');
+    const mobileField = document.getElementById('ref1_mobile');
+    if (nameField) nameField.value = picked.name || '';
+    if (mobileField) mobileField.value = picked.phone || '';
+  };
+
+  const pickFranchise = (label) => {
+    const picked = franchises.find((fr) => frLabel(fr) === label);
+    if (!picked) return;
+    frIdField.value = String(picked.id || '');
+    seIdField.value = '';
+    seSearch.value = '';
+    syncSalesExecOptions();
+  };
+
+  const pickSalesExec = (label) => {
+    const frId = Number(frIdField.value || 0);
+    const filtered = salesExecs.filter((se) => Number(se.franchise_id || 0) === frId);
+    const picked = filtered.find((se) => seLabel(se) === label);
+    if (!picked) return;
+    seIdField.value = String(picked.id || '');
+    const nameField = document.getElementById('ref1_franchise_name');
+    const mobileField = document.getElementById('ref1_franchise_mobile');
+    if (nameField) nameField.value = picked.name || '';
+    if (mobileField) mobileField.value = picked.phone || '';
+  };
+
+  setupCombo(cpSearch, cpList, () => channelPartners.map((cp) => cpLabel(cp)), pickChannelPartner);
+  setupCombo(frSearch, frList, () => franchises.map((fr) => frLabel(fr)), pickFranchise);
+  setupCombo(
+    seSearch,
+    seList,
+    () => {
+      const frId = Number(frIdField.value || 0);
+      return salesExecs.filter((se) => Number(se.franchise_id || 0) === frId).map((se) => seLabel(se));
+    },
+    pickSalesExec,
+  );
+
+  typeRadios.forEach((radio) => radio.addEventListener('change', syncType));
+
+  if (cpIdField?.value) {
+    const cp = channelPartners.find((x) => String(x.id) === String(cpIdField.value));
+    if (cp && cpSearch) cpSearch.value = cpLabel(cp);
+  }
+  if (frIdField?.value) {
+    const fr = franchises.find((x) => String(x.id) === String(frIdField.value));
+    if (fr && frSearch) frSearch.value = frLabel(fr);
+  }
+  if (seIdField?.value) {
+    const se = salesExecs.find((x) => String(x.id) === String(seIdField.value));
+    if (se && seSearch) seSearch.value = seLabel(se);
+  }
+
+  syncType();
+  syncSalesExecOptions();
+
   const previewArea = document.querySelector('[data-preview-area]');
   const inputs = Array.from(document.querySelectorAll('[data-preview-input]'));
   if (!previewArea || !inputs.length) return;

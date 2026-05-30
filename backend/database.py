@@ -356,6 +356,46 @@ def init_db():
     """)
 
     exec_sql("""
+        CREATE TABLE IF NOT EXISTS franchises (
+            id          SERIAL PRIMARY KEY,
+            code        VARCHAR(50) UNIQUE NOT NULL,
+            name        VARCHAR(150) NOT NULL,
+            phone       VARCHAR(50),
+            address     TEXT,
+            created_at  TIMESTAMP NOT NULL DEFAULT NOW()
+        );
+    """)
+
+    exec_sql("""
+        CREATE TABLE IF NOT EXISTS sales_executives (
+            id            SERIAL PRIMARY KEY,
+            franchise_id  INTEGER REFERENCES franchises(id) ON DELETE CASCADE,
+            name          VARCHAR(150) NOT NULL,
+            phone         VARCHAR(50),
+            email         VARCHAR(200),
+            address       TEXT,
+            remarks       TEXT,
+            created_at    TIMESTAMP NOT NULL DEFAULT NOW()
+        );
+    """)
+
+    try:
+        exec_sql("""
+            CREATE TABLE IF NOT EXISTS channel_partners (
+                id           SERIAL PRIMARY KEY,
+                name         VARCHAR(150) NOT NULL,
+                phone        VARCHAR(50),
+                email        VARCHAR(200),
+                address      TEXT,
+                trainer_id   INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                created_at   TIMESTAMP NOT NULL DEFAULT NOW()
+            );
+        """)
+    except Exception:
+        # If creation fails (e.g., type/namespace collision), continue without aborting
+        conn.rollback()
+
+    exec_sql("""
         CREATE TABLE IF NOT EXISTS offers (
             id             SERIAL PRIMARY KEY,
             name           VARCHAR(100) NOT NULL,
@@ -392,14 +432,20 @@ def init_db():
             ref1_type        VARCHAR(30),
             ref1_mobile      VARCHAR(20),
             ref1_amount_paid NUMERIC(10,2) DEFAULT 0,
+            ref1_payment_method VARCHAR(20),
+            ref1_channel_partner_id INTEGER REFERENCES channel_partners(id) ON DELETE SET NULL,
+            ref1_franchise_id INTEGER REFERENCES franchises(id) ON DELETE SET NULL,
+            ref1_sales_exec_id INTEGER REFERENCES sales_executives(id) ON DELETE SET NULL,
             ref2_name        VARCHAR(100),
             ref2_type        VARCHAR(30),
             ref2_mobile      VARCHAR(20),
             ref2_amount_paid NUMERIC(10,2) DEFAULT 0,
+            ref2_payment_method VARCHAR(20),
             ref3_name        VARCHAR(100),
             ref3_type        VARCHAR(30),
             ref3_mobile      VARCHAR(20),
             ref3_amount_paid NUMERIC(10,2) DEFAULT 0,
+            ref3_payment_method VARCHAR(20),
             emergency1_name  VARCHAR(100),
             emergency1_mobile VARCHAR(20),
             emergency1_relation VARCHAR(20),
@@ -539,6 +585,10 @@ def init_db():
         "CREATE INDEX IF NOT EXISTS idx_machines_status ON machines(status)",
         "CREATE INDEX IF NOT EXISTS idx_machines_deleted_center ON machines(is_deleted, center_id)",
         "CREATE INDEX IF NOT EXISTS idx_offers_location_active_valid_to ON offers(location_id, is_active, valid_to)",
+        "CREATE INDEX IF NOT EXISTS idx_franchises_code ON franchises(code)",
+        "CREATE INDEX IF NOT EXISTS idx_sales_execs_franchise_id ON sales_executives(franchise_id, created_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_channel_partners_trainer_id ON channel_partners(trainer_id)",
+        "CREATE INDEX IF NOT EXISTS idx_channel_partners_name_email ON channel_partners(name, email)",
     ]:
         try:
             if _USE_SQLITE:
@@ -570,14 +620,20 @@ def init_db():
         "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS ref1_type VARCHAR(30)",
         "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS ref1_mobile VARCHAR(20)",
         "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS ref1_amount_paid NUMERIC(10,2) DEFAULT 0",
+        "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS ref1_payment_method VARCHAR(20)",
+        "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS ref1_channel_partner_id INTEGER REFERENCES channel_partners(id) ON DELETE SET NULL",
+        "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS ref1_franchise_id INTEGER REFERENCES franchises(id) ON DELETE SET NULL",
+        "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS ref1_sales_exec_id INTEGER REFERENCES sales_executives(id) ON DELETE SET NULL",
         "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS ref2_name VARCHAR(100)",
         "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS ref2_type VARCHAR(30)",
         "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS ref2_mobile VARCHAR(20)",
         "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS ref2_amount_paid NUMERIC(10,2) DEFAULT 0",
+        "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS ref2_payment_method VARCHAR(20)",
         "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS ref3_name VARCHAR(100)",
         "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS ref3_type VARCHAR(30)",
         "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS ref3_mobile VARCHAR(20)",
         "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS ref3_amount_paid NUMERIC(10,2) DEFAULT 0",
+        "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS ref3_payment_method VARCHAR(20)",
         "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS emergency1_name VARCHAR(100)",
         "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS emergency1_mobile VARCHAR(20)",
         "ALTER TABLE inquiries ADD COLUMN IF NOT EXISTS emergency1_relation VARCHAR(20)",

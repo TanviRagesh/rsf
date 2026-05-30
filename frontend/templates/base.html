@@ -38,6 +38,12 @@
     <a href="{{ url_for('machines.index') }}" class="nav-item {% if 'machines' in (request.endpoint or '') %}active{% endif %}">
       <i class="fa-solid fa-gears"></i><span>Machines</span>
     </a>
+    <a href="{{ url_for('franchises.index') }}" class="nav-item {% if 'franchises' in (request.endpoint or '') %}active{% endif %}">
+      <i class="fa-solid fa-building"></i><span>Franchises</span>
+    </a>
+    <a href="{{ url_for('channel_partners.index') }}" class="nav-item {% if 'channel_partners' in (request.endpoint or '') or 'channel-partners' in (request.path or '') %}active{% endif %}">
+      <i class="fa-solid fa-handshake"></i><span>Channel Partners</span>
+    </a>
     <a href="{{ url_for('courses.index') }}" class="nav-item {% if 'courses' in (request.endpoint or '') %}active{% endif %}">
       <i class="fa-solid fa-book-open"></i><span>Courses</span>
     </a>

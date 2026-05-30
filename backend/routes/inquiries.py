@@ -297,7 +297,7 @@ def add():
     assigned_loc_id = session.get("location_id")
     conn = get_db()
     cur = conn.cursor()
-    locs, courses_list, offers = load_form_options(cur, role, assigned_loc_id)
+    locs, courses_list, offers, channel_partners, franchises, sales_execs = load_form_options(cur, role, assigned_loc_id)
     close_db(conn, commit=False)
 
     defaults = {
@@ -336,13 +336,13 @@ def add():
                     INSERT INTO inquiries
                       (name,gender,mobile,location_id,city,state,course_id,offer_id,
                        inquiry_date,followup_date,admission_date,status,fees_total,fees_paid,
-                                                     ref1_name,ref1_type,ref1_mobile,ref1_amount_paid,
-                                                     ref2_name,ref2_type,ref2_mobile,ref2_amount_paid,
-                                                     ref3_name,ref3_type,ref3_mobile,ref3_amount_paid,
+                                             ref1_name,ref1_type,ref1_mobile,ref1_amount_paid,ref1_payment_method,ref1_channel_partner_id,ref1_franchise_id,ref1_sales_exec_id,
+                                             ref2_name,ref2_type,ref2_mobile,ref2_amount_paid,ref2_payment_method,
+                                             ref3_name,ref3_type,ref3_mobile,ref3_amount_paid,ref3_payment_method,
                              emergency1_name,emergency1_mobile,emergency1_relation,
                              emergency2_name,emergency2_mobile,emergency2_relation,
                              emergency3_name,emergency3_mobile,emergency3_relation)
-                                            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                                            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     RETURNING id;
                     """,
                     (
@@ -364,14 +364,20 @@ def add():
                         cleaned["ref1_type"],
                         cleaned["ref1_mobile"],
                         cleaned["ref1_amount_paid"],
+                        cleaned["ref1_payment_method"],
+                        cleaned["ref1_channel_partner_id"],
+                        cleaned["ref1_franchise_id"],
+                        cleaned["ref1_sales_exec_id"],
                         cleaned["ref2_name"],
                         cleaned["ref2_type"],
                         cleaned["ref2_mobile"],
                         cleaned["ref2_amount_paid"],
+                        cleaned["ref2_payment_method"],
                         cleaned["ref3_name"],
                         cleaned["ref3_type"],
                         cleaned["ref3_mobile"],
                         cleaned["ref3_amount_paid"],
+                        cleaned["ref3_payment_method"],
                         cleaned["emergency1_name"],
                         cleaned["emergency1_mobile"],
                         cleaned["emergency1_relation"],
@@ -412,6 +418,9 @@ def add():
                 locations=locs,
                 courses=courses_list,
                 offers=offers,
+                channel_partners=channel_partners,
+                franchises=franchises,
+                sales_execs=sales_execs,
                 defaults=defaults,
                 action="Add",
                 form_data=request.form.to_dict(flat=True),
@@ -427,6 +436,9 @@ def add():
                 locations=locs,
                 courses=courses_list,
                 offers=offers,
+                channel_partners=channel_partners,
+                franchises=franchises,
+                sales_execs=sales_execs,
                 defaults=defaults,
                 action="Add",
                 form_data=request.form.to_dict(flat=True),
@@ -439,6 +451,9 @@ def add():
         locations=locs,
         courses=courses_list,
         offers=offers,
+        channel_partners=channel_partners,
+        franchises=franchises,
+        sales_execs=sales_execs,
         defaults=defaults,
         action="Add",
         documents_by_type={},
@@ -454,7 +469,7 @@ def edit(iid):
     conn = get_db()
     cur = conn.cursor()
     inquiry = fetch_inquiry(cur, iid, role, loc_id)
-    locs, courses_list, offers = load_form_options(cur, role, loc_id)
+    locs, courses_list, offers, channel_partners, franchises, sales_execs = load_form_options(cur, role, loc_id)
     document_rows = _load_document_rows(cur, iid)
     documents_by_type = _split_document_groups(document_rows)
     close_db(conn, commit=False)
@@ -495,9 +510,9 @@ def edit(iid):
                   name=%s,gender=%s,mobile=%s,location_id=%s,city=%s,state=%s,
                   course_id=%s,offer_id=%s,inquiry_date=%s,followup_date=%s,
                   admission_date=%s,status=%s,fees_total=%s,fees_paid=%s,
-                                                                        ref1_name=%s,ref1_type=%s,ref1_mobile=%s,ref1_amount_paid=%s,
-                                                                        ref2_name=%s,ref2_type=%s,ref2_mobile=%s,ref2_amount_paid=%s,
-                                                                        ref3_name=%s,ref3_type=%s,ref3_mobile=%s,ref3_amount_paid=%s,
+                  ref1_name=%s,ref1_type=%s,ref1_mobile=%s,ref1_amount_paid=%s,ref1_payment_method=%s,ref1_channel_partner_id=%s,ref1_franchise_id=%s,ref1_sales_exec_id=%s,
+                  ref2_name=%s,ref2_type=%s,ref2_mobile=%s,ref2_amount_paid=%s,ref2_payment_method=%s,
+                  ref3_name=%s,ref3_type=%s,ref3_mobile=%s,ref3_amount_paid=%s,ref3_payment_method=%s,
                                                                         emergency1_name=%s,emergency1_mobile=%s,emergency1_relation=%s,
                                                                         emergency2_name=%s,emergency2_mobile=%s,emergency2_relation=%s,
                                                                         emergency3_name=%s,emergency3_mobile=%s,emergency3_relation=%s
@@ -522,14 +537,20 @@ def edit(iid):
                     cleaned["ref1_type"],
                     cleaned["ref1_mobile"],
                     cleaned["ref1_amount_paid"],
+                    cleaned["ref1_payment_method"],
+                    cleaned["ref1_channel_partner_id"],
+                    cleaned["ref1_franchise_id"],
+                    cleaned["ref1_sales_exec_id"],
                     cleaned["ref2_name"],
                     cleaned["ref2_type"],
                     cleaned["ref2_mobile"],
                     cleaned["ref2_amount_paid"],
+                    cleaned["ref2_payment_method"],
                     cleaned["ref3_name"],
                     cleaned["ref3_type"],
                     cleaned["ref3_mobile"],
                     cleaned["ref3_amount_paid"],
+                    cleaned["ref3_payment_method"],
                     cleaned["emergency1_name"],
                     cleaned["emergency1_mobile"],
                     cleaned["emergency1_relation"],
@@ -561,6 +582,9 @@ def edit(iid):
                 locations=locs,
                 courses=courses_list,
                 offers=offers,
+                channel_partners=channel_partners,
+                franchises=franchises,
+                sales_execs=sales_execs,
                 defaults={},
                 action="Edit",
                 form_data=request.form.to_dict(flat=True),
@@ -576,6 +600,9 @@ def edit(iid):
                 locations=locs,
                 courses=courses_list,
                 offers=offers,
+                channel_partners=channel_partners,
+                franchises=franchises,
+                sales_execs=sales_execs,
                 defaults={},
                 action="Edit",
                 form_data=request.form.to_dict(flat=True),
@@ -588,6 +615,9 @@ def edit(iid):
         locations=locs,
         courses=courses_list,
         offers=offers,
+        channel_partners=channel_partners,
+        franchises=franchises,
+        sales_execs=sales_execs,
         defaults={},
         action="Edit",
         documents_by_type=documents_by_type,
